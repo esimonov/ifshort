@@ -132,20 +132,21 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func processIdents(vars map[string]occurrenceInfo, idents ...ast.Expr) {
+func processIdents(occs map[string]occurrenceInfo, idents ...ast.Expr) {
 	for _, v := range idents {
 		ident, ok := v.(*ast.Ident)
 		if !ok {
 			continue
 		}
-		if ui, ok := vars[ident.Name]; ok {
-			if ui.ifStmtPos != 0 && ui.declarationPos != 0 {
+		if oi, ok := occs[ident.Name]; ok {
+			if oi.ifStmtPos != 0 && oi.declarationPos != 0 {
 				continue
 			}
-			ui.ifStmtPos = v.Pos()
-			vars[ident.Name] = ui
+
+			oi.ifStmtPos = v.Pos()
+			occs[ident.Name] = oi
 		} else if ident.Name != "nil" {
-			vars[ident.Name] = occurrenceInfo{ifStmtPos: v.Pos()}
+			occs[ident.Name] = occurrenceInfo{ifStmtPos: v.Pos()}
 		}
 	}
 }

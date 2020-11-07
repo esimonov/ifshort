@@ -16,12 +16,13 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]occur
 			if len(trimmed) != 1 {
 				continue
 			}
+
 			pair := trimmed[0]
 
 			if pair.Lh.Obj != nil && pair.Lh.Obj.Pos() == pair.Lh.Pos() {
-				if ui, ok := occs[pair.Lh.Name]; ok {
-					ui.declarationPos = pair.Lh.Pos()
-					occs[pair.Lh.Name] = ui
+				if oi, ok := occs[pair.Lh.Name]; ok {
+					oi.declarationPos = pair.Lh.Pos()
+					occs[pair.Lh.Name] = oi
 				} else if pair.Lh.Name != "nil" && areExtraConditionsSatisfied(pair, pass) {
 					occs[pair.Lh.Name] = occurrenceInfo{declarationPos: pair.Lh.Pos()}
 				}
@@ -65,15 +66,15 @@ func areExtraConditionsSatisfied(pair assignmentSides, pass *analysis.Pass) bool
 	return true
 }
 
-func addOccurrenceFromCondition(stmt ast.Expr, vars map[string]occurrenceInfo) {
+func addOccurrenceFromCondition(stmt ast.Expr, occs map[string]occurrenceInfo) {
 	switch v := stmt.(type) {
 	case *ast.BinaryExpr:
 		for _, v := range [2]ast.Expr{v.X, v.Y} {
 			switch e := v.(type) {
 			case *ast.SelectorExpr:
-				processIdents(vars, e.X)
+				processIdents(occs, e.X)
 			case *ast.Ident:
-				processIdents(vars, e)
+				processIdents(occs, e)
 			}
 		}
 	case *ast.CallExpr:
@@ -82,21 +83,21 @@ func addOccurrenceFromCondition(stmt ast.Expr, vars map[string]occurrenceInfo) {
 			case *ast.CallExpr:
 				// TODO
 			case *ast.Ident:
-				processIdents(vars, e)
+				processIdents(occs, e)
 			}
 		}
 	}
 }
 
-func addOccurrenceFromIfClause(stmt ast.Stmt, vars map[string]occurrenceInfo) {
-	addOccurrenceFromBlockStmt(stmt, vars)
+func addOccurrenceFromIfClause(stmt ast.Stmt, occs map[string]occurrenceInfo) {
+	addOccurrenceFromBlockStmt(stmt, occs)
 }
 
-func addOccurrenceFromElseClause(stmt ast.Stmt, vars map[string]occurrenceInfo) {
-	addOccurrenceFromBlockStmt(stmt, vars)
+func addOccurrenceFromElseClause(stmt ast.Stmt, occs map[string]occurrenceInfo) {
+	addOccurrenceFromBlockStmt(stmt, occs)
 }
 
-func addOccurrenceFromBlockStmt(stmt ast.Stmt, vars map[string]occurrenceInfo) {
+func addOccurrenceFromBlockStmt(stmt ast.Stmt, occs map[string]occurrenceInfo) {
 	blockStmt, ok := stmt.(*ast.BlockStmt)
 	if !ok {
 		return
@@ -107,6 +108,7 @@ func addOccurrenceFromBlockStmt(stmt ast.Stmt, vars map[string]occurrenceInfo) {
 		if !ok {
 			continue
 		}
+
 		callExpr, ok := exptStmt.X.(*ast.CallExpr)
 		if !ok {
 			continue
@@ -114,14 +116,15 @@ func addOccurrenceFromBlockStmt(stmt ast.Stmt, vars map[string]occurrenceInfo) {
 
 		for _, arg := range callExpr.Args {
 			if ident, ok := arg.(*ast.Ident); ok {
-				if ui, ok := vars[ident.Name]; ok {
-					if ui.ifStmtPos != 0 && ui.declarationPos != 0 {
+				if oi, ok := occs[ident.Name]; ok {
+					if oi.ifStmtPos != 0 && oi.declarationPos != 0 {
 						continue
 					}
-					ui.ifStmtPos = arg.Pos()
-					vars[ident.Name] = ui
+
+					oi.ifStmtPos = arg.Pos()
+					occs[ident.Name] = oi
 				} else if ident.Name != "nil" {
-					vars[ident.Name] = occurrenceInfo{ifStmtPos: arg.Pos()}
+					occs[ident.Name] = occurrenceInfo{ifStmtPos: arg.Pos()}
 				}
 			}
 		}

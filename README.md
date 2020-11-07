@@ -1,6 +1,6 @@
 # ifshort
 
-A Go linter that checks if your code uses short syntax for `if`-statements whenever possible.
+Go linter that checks if your code uses short syntax for `if`-statements whenever possible.
 
 For example, it will suggest changing this code:
 
