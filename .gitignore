@@ -1,0 +1,4 @@
+debug.*
+vscode
+vendor
+.DS_Store
