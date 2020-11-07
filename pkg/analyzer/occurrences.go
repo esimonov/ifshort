@@ -2,9 +2,22 @@ package analyzer
 
 import (
 	"go/ast"
+	"go/token"
 
 	"golang.org/x/tools/go/analysis"
 )
+
+type occurrenceInfo struct {
+	declarationPos token.Pos
+	ifStmtPos      token.Pos
+}
+
+func (oi occurrenceInfo) maxPos() token.Pos {
+	if oi.declarationPos > oi.ifStmtPos {
+		return oi.declarationPos
+	}
+	return oi.ifStmtPos
+}
 
 func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]occurrenceInfo {
 	occs := map[string]occurrenceInfo{}
@@ -23,7 +36,7 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]occur
 				if oi, ok := occs[pair.Lh.Name]; ok {
 					oi.declarationPos = pair.Lh.Pos()
 					occs[pair.Lh.Name] = oi
-				} else if pair.Lh.Name != "nil" && areExtraConditionsSatisfied(pair, pass) {
+				} else if pair.Lh.Name != "nil" && areFlagSettingsSatisfied(pair, pass) {
 					occs[pair.Lh.Name] = occurrenceInfo{declarationPos: pair.Lh.Pos()}
 				}
 			}
@@ -56,11 +69,11 @@ func trimAssignmentSides(lhs, rhs []ast.Expr) []assignmentSides {
 	return res
 }
 
-func areExtraConditionsSatisfied(pair assignmentSides, pass *analysis.Pass) bool {
-	if pass.Fset.Position(pair.Rh.End()).Line-pass.Fset.Position(pair.Rh.Pos()).Line > maxDeclHeight {
+func areFlagSettingsSatisfied(pair assignmentSides, pass *analysis.Pass) bool {
+	if pass.Fset.Position(pair.Rh.End()).Line-pass.Fset.Position(pair.Rh.Pos()).Line > maxDeclLines {
 		return false
 	}
-	if pair.Rh.End()-pair.Lh.Pos() > maxDeclLength {
+	if int(pair.Rh.End()-pair.Lh.Pos()) > maxDeclChars {
 		return false
 	}
 	return true
@@ -71,19 +84,19 @@ func addOccurrenceFromCondition(stmt ast.Expr, occs map[string]occurrenceInfo) {
 	case *ast.BinaryExpr:
 		for _, v := range [2]ast.Expr{v.X, v.Y} {
 			switch e := v.(type) {
-			case *ast.SelectorExpr:
-				processIdents(occs, e.X)
 			case *ast.Ident:
 				processIdents(occs, e)
+			case *ast.SelectorExpr:
+				processIdents(occs, e.X)
 			}
 		}
 	case *ast.CallExpr:
 		for _, a := range v.Args {
 			switch e := a.(type) {
-			case *ast.CallExpr:
-				// TODO
 			case *ast.Ident:
 				processIdents(occs, e)
+			case *ast.CallExpr:
+				addOccurrenceFromCondition(e, occs)
 			}
 		}
 	}

@@ -34,13 +34,6 @@ func notUsed_CondBinaryExpr_NotOK() {
 	}
 }
 
-func notUsed_Var_CondBinaryExpr_NotOK() {
-	var err error // want "variable '.+' is only used in the if-statement"
-	if err != nil {
-		dummyNoOp1(err)
-	}
-}
-
 func notUsed_Var2_CondBinaryExpr_NotOK() {
 	v := dummyForLongCall(
 		nil,

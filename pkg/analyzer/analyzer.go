@@ -2,15 +2,23 @@ package analyzer
 
 import (
 	"go/ast"
-	"go/token"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/ast/inspector"
 )
 
-const maxDeclLength = 80 // TODO: flag
-const maxDeclHeight = 1
+var maxDeclChars, maxDeclLines int
+
+const (
+	maxDeclLinesUsage = `maximum length of variable declaration measured in number of lines, after which the linter won't suggest using short syntax. Has precedence over max-decl-chars.`
+	maxDeclCharsUsage = `maximum length of variable declaration measured in number of characters, after which the linter won't suggest using short syntax.`
+)
+
+func init() {
+	Analyzer.Flags.IntVar(&maxDeclLines, "max-decl-lines", 1, maxDeclLinesUsage)
+	Analyzer.Flags.IntVar(&maxDeclChars, "max-decl-chars", 30, maxDeclCharsUsage)
+}
 
 // Analyzer is an analysis.Analyzer instance for ifshort linter.
 var Analyzer = &analysis.Analyzer{
@@ -18,18 +26,6 @@ var Analyzer = &analysis.Analyzer{
 	Doc:      "Checks that your code uses short syntax for if-statements whenever possible.",
 	Run:      run,
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
-}
-
-type occurrenceInfo struct {
-	declarationPos token.Pos
-	ifStmtPos      token.Pos
-}
-
-func (oi occurrenceInfo) maxPos() token.Pos {
-	if oi.declarationPos > oi.ifStmtPos {
-		return oi.declarationPos
-	}
-	return oi.ifStmtPos
 }
 
 /*
