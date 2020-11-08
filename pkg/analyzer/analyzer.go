@@ -50,9 +50,11 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}*/
 
 		candidates := map[string]occurrenceInfo{}
+		occurrences := getOccurrenceMap(fdecl, pass)
 
-		for varName, occ := range getOccurrenceMap(fdecl, pass) {
-			if occ.maxPos() == occ.ifStmtPos && occ.declarationPos != 0 {
+		for varName, occ := range occurrences {
+			if occ.ifStmtPos > occ.declarationPos && occ.declarationPos != 0 ||
+				isFoundByLhsMarker(occurrences, occ.lhsMarker) {
 				candidates[varName] = occ
 			}
 		}
@@ -88,12 +90,12 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				for _, a := range v.Call.Args {
 					checkCandidate(candidates, a)
 				}
+			case *ast.RangeStmt:
+				checkCandidate(candidates, v.X)
 			case *ast.ReturnStmt:
 				for _, r := range v.Results {
 					checkCandidate(candidates, r)
 				}
-			case *ast.RangeStmt:
-				checkCandidate(candidates, v.X)
 			case *ast.SendStmt:
 				checkCandidate(candidates, v.Value)
 			case *ast.SwitchStmt:
@@ -128,45 +130,36 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func processIdents(occs map[string]occurrenceInfo, idents ...ast.Expr) {
-	for _, v := range idents {
-		ident, ok := v.(*ast.Ident)
-		if !ok {
-			continue
-		}
-		if oi, ok := occs[ident.Name]; ok {
-			if oi.ifStmtPos != 0 && oi.declarationPos != 0 {
-				continue
-			}
-
-			oi.ifStmtPos = v.Pos()
-			occs[ident.Name] = oi
-		} else if ident.Name != "nil" {
-			occs[ident.Name] = occurrenceInfo{ifStmtPos: v.Pos()}
+func isFoundByLhsMarker(candidates map[string]occurrenceInfo, lhsMarker int64) bool {
+	var i int
+	for _, v := range candidates {
+		if v.lhsMarker == lhsMarker {
+			i++
 		}
 	}
+	return i >= 2
 }
 
 func checkCandidate(candidates map[string]occurrenceInfo, e ast.Expr) {
 	switch v := e.(type) {
-	case *ast.Ident:
-		if v.Pos() != candidates[v.Name].maxPos() {
-			delete(candidates, v.Name)
-		}
 	case *ast.CallExpr:
-		processCallExpr(v, candidates)
-	case *ast.UnaryExpr:
-		checkCandidate(candidates, v.X)
-	}
-}
-
-func processCallExpr(e ast.Expr, candidates map[string]occurrenceInfo) {
-	if callExpr, ok := e.(*ast.CallExpr); ok {
-		for _, arg := range callExpr.Args {
+		for _, arg := range v.Args {
 			checkCandidate(candidates, arg)
 		}
-		if fun, ok := callExpr.Fun.(*ast.SelectorExpr); ok {
+		if fun, ok := v.Fun.(*ast.SelectorExpr); ok {
 			checkCandidate(candidates, fun.X)
 		}
+	case *ast.Ident:
+		if v.Pos() != candidates[v.Name].ifStmtPos {
+			lhsMarker := candidates[v.Name].lhsMarker
+			delete(candidates, v.Name)
+			for k, v := range candidates {
+				if v.lhsMarker == lhsMarker {
+					delete(candidates, k)
+				}
+			}
+		}
+	case *ast.UnaryExpr:
+		checkCandidate(candidates, v.X)
 	}
 }

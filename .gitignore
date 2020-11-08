@@ -3,3 +3,5 @@ vscode
 vendor
 .DS_Store
 .golangci.yml
+ifshort
+main

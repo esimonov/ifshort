@@ -1,15 +1,17 @@
 package testdata
 
-func dummyNoOp1(v interface{}) {}
+func noOp1(interface{}) {}
 
-func dummyNoOp2(v interface{}) { dummyNoOp1(v) }
+func noOp2(interface{}) {}
 
-func dummyWithReturn() interface{} { return nil }
+func returnValue() interface{} { return nil }
 
-func dummyForLongCall(...interface{}) interface{} { return nil }
+func returnTwoValues() (interface{}, interface{}) { return nil, nil }
+
+func longCallWithReturnValue(...interface{}) interface{} { return nil }
 
 type dummyType struct{ v interface{} }
 
-func (dt dummyType) dummyNoOp() {}
+func (dt dummyType) noOp() {}
 
-func (dt dummyType) dummyWithReturn() interface{} { return nil }
+func (dt dummyType) returnValue() interface{} { return nil }
