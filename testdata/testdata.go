@@ -66,7 +66,7 @@ func notUsed_Else_NotOK() {
 	}
 }
 
-func notUsed_DifferentVars_NotOK() {
+func notUsed_DifferentVarsWithSameName_NotOK() {
 	_, b := returnTwoValues() // want "variable '.+' is only used in the if-statement"
 	if b != nil {
 		noOp1(b)

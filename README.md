@@ -19,7 +19,7 @@ func someFunc(k string, m map[string]interface{}) {
 ```
 to this:
 ```go
-func someFunc() {
+func someFunc(k string, m map[string]interface{}) {
 	if _, ok := m[k]; !ok {
 		return
 	}
