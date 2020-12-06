@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"go/ast"
+	"go/token"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -45,7 +46,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	inspector.Preorder(nodeFilter, func(node ast.Node) {
 		fdecl := node.(*ast.FuncDecl)
 
-		/*if fdecl.Name.Name != "" {
+		/*if fdecl.Name.Name != "notUsed_CondCallExpr_NotOK" {
 			return
 		}*/
 
@@ -76,14 +77,14 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			case *ast.IfStmt:
 				switch cond := v.Cond.(type) {
 				case *ast.BinaryExpr:
-					checkCandidate(candidates, cond.X)
-					checkCandidate(candidates, cond.Y)
+					checkIfCandidate(candidates, cond.X, v.If)
+					checkIfCandidate(candidates, cond.Y, v.If)
 				case *ast.CallExpr:
-					checkCandidate(candidates, cond)
+					checkIfCandidate(candidates, cond, v.If)
 				}
 				if init, ok := v.Init.(*ast.AssignStmt); ok {
 					for _, e := range init.Rhs {
-						checkCandidate(candidates, e)
+						checkIfCandidate(candidates, e, v.If)
 					}
 				}
 			case *ast.GoStmt:
@@ -140,6 +141,33 @@ func isFoundByLhsMarker(candidates map[string]occurrenceInfo, lhsMarker int64) b
 	return i >= 2
 }
 
+func checkIfCandidate(candidates map[string]occurrenceInfo, e ast.Expr, ifPos token.Pos) {
+	switch v := e.(type) {
+	case *ast.CallExpr:
+		for _, arg := range v.Args {
+			checkIfCandidate(candidates, arg, ifPos)
+		}
+		if fun, ok := v.Fun.(*ast.SelectorExpr); ok {
+			checkIfCandidate(candidates, fun.X, ifPos)
+		}
+	case *ast.Ident:
+		if _, ok := candidates[v.Name]; !ok {
+			return
+		}
+		if ifPos != candidates[v.Name].ifStmtPos {
+			lhsMarker := candidates[v.Name].lhsMarker
+			delete(candidates, v.Name)
+			for k, v := range candidates {
+				if v.lhsMarker == lhsMarker {
+					delete(candidates, k)
+				}
+			}
+		}
+	case *ast.UnaryExpr:
+		checkIfCandidate(candidates, v.X, ifPos)
+	}
+}
+
 func checkCandidate(candidates map[string]occurrenceInfo, e ast.Expr) {
 	switch v := e.(type) {
 	case *ast.CallExpr:
@@ -150,7 +178,10 @@ func checkCandidate(candidates map[string]occurrenceInfo, e ast.Expr) {
 			checkCandidate(candidates, fun.X)
 		}
 	case *ast.Ident:
-		if v.Pos() != candidates[v.Name].ifStmtPos {
+		if _, ok := candidates[v.Name]; !ok {
+			return
+		}
+		if v.Pos() != candidates[v.Name].ifStmtPos && v.Pos() != candidates[v.Name].declarationPos {
 			lhsMarker := candidates[v.Name].lhsMarker
 			delete(candidates, v.Name)
 			for k, v := range candidates {

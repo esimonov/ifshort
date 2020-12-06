@@ -22,9 +22,9 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]occur
 		case *ast.AssignStmt:
 			addOccurrencesFromAssignment(pass, v, occs)
 		case *ast.IfStmt:
-			addOccurrenceFromCondition(v.Cond, occs)
-			addOccurrenceFromIfClause(v.Body, occs)
-			addOccurrenceFromElseClause(v.Else, occs)
+			addOccurrenceFromCondition(v, occs)
+			addOccurrenceFromIfClause(v, occs)
+			addOccurrenceFromElseClause(v, occs)
 		}
 	}
 	return occs
@@ -40,9 +40,9 @@ func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStm
 		}
 
 		if lhsIdent.Name != "_" && lhsIdent.Obj != nil && lhsIdent.Obj.Pos() == lhsIdent.Pos() {
-			if oi, ok := occs[lhsIdent.Name]; ok {
-				oi.declarationPos = lhsIdent.Pos()
-				occs[lhsIdent.Name] = oi
+			if _, ok := occs[lhsIdent.Name]; ok {
+				//oi.declarationPos = lhsIdent.Pos()
+				//occs[lhsIdent.Name] = oi
 			} else if areFlagSettingsSatisfied(pass, assignment, i) {
 				occs[lhsIdent.Name] = occurrenceInfo{
 					declarationPos: lhsIdent.Pos(),
@@ -70,38 +70,38 @@ func areFlagSettingsSatisfied(pass *analysis.Pass, assignment *ast.AssignStmt, i
 	return true
 }
 
-func addOccurrenceFromCondition(stmt ast.Expr, occs map[string]occurrenceInfo) {
-	switch v := stmt.(type) {
+func addOccurrenceFromCondition(stmt *ast.IfStmt, occs map[string]occurrenceInfo) {
+	switch v := stmt.Cond.(type) {
 	case *ast.BinaryExpr:
 		for _, v := range [2]ast.Expr{v.X, v.Y} {
 			switch e := v.(type) {
 			case *ast.Ident:
-				addOccurrenceFromIdent(occs, e)
+				addOccurrenceFromIdent(occs, stmt.If, e)
 			case *ast.SelectorExpr:
-				addOccurrenceFromIdent(occs, e.X)
+				addOccurrenceFromIdent(occs, stmt.If, e.X)
 			}
 		}
 	case *ast.CallExpr:
 		for _, a := range v.Args {
 			switch e := a.(type) {
 			case *ast.Ident:
-				addOccurrenceFromIdent(occs, e)
+				addOccurrenceFromIdent(occs, stmt.If, e)
 			case *ast.CallExpr:
-				addOccurrenceFromCallExpr(occs, e)
+				addOccurrenceFromCallExpr(occs, stmt.If, e)
 			}
 		}
 	}
 }
 
-func addOccurrenceFromIfClause(stmt ast.Stmt, occs map[string]occurrenceInfo) {
-	addOccurrenceFromBlockStmt(stmt, occs)
+func addOccurrenceFromIfClause(stmt *ast.IfStmt, occs map[string]occurrenceInfo) {
+	addOccurrenceFromBlockStmt(stmt.Body, stmt.If, occs)
 }
 
-func addOccurrenceFromElseClause(stmt ast.Stmt, occs map[string]occurrenceInfo) {
-	addOccurrenceFromBlockStmt(stmt, occs)
+func addOccurrenceFromElseClause(stmt *ast.IfStmt, occs map[string]occurrenceInfo) {
+	addOccurrenceFromBlockStmt(stmt.Else, stmt.If, occs)
 }
 
-func addOccurrenceFromBlockStmt(stmt ast.Stmt, occs map[string]occurrenceInfo) {
+func addOccurrenceFromBlockStmt(stmt ast.Stmt, ifPos token.Pos, occs map[string]occurrenceInfo) {
 	blockStmt, ok := stmt.(*ast.BlockStmt)
 	if !ok {
 		return
@@ -114,25 +114,25 @@ func addOccurrenceFromBlockStmt(stmt ast.Stmt, occs map[string]occurrenceInfo) {
 		}
 
 		if callExpr, ok := exptStmt.X.(*ast.CallExpr); ok {
-			addOccurrenceFromCallExpr(occs, callExpr)
+			addOccurrenceFromCallExpr(occs, ifPos, callExpr)
 		}
 	}
 }
 
-func addOccurrenceFromCallExpr(occs map[string]occurrenceInfo, callExpr *ast.CallExpr) {
+func addOccurrenceFromCallExpr(occs map[string]occurrenceInfo, ifPos token.Pos, callExpr *ast.CallExpr) {
 	for _, arg := range callExpr.Args {
-		addOccurrenceFromIdent(occs, arg)
+		addOccurrenceFromIdent(occs, ifPos, arg)
 	}
 }
 
-func addOccurrenceFromIdent(occs map[string]occurrenceInfo, v ast.Expr) {
+func addOccurrenceFromIdent(occs map[string]occurrenceInfo, ifPos token.Pos, v ast.Expr) {
 	if ident, ok := v.(*ast.Ident); ok {
 		if oi, ok := occs[ident.Name]; ok {
 			if oi.ifStmtPos != 0 && oi.declarationPos != 0 {
 				return
 			}
 
-			oi.ifStmtPos = v.Pos()
+			oi.ifStmtPos = ifPos
 			occs[ident.Name] = oi
 		}
 	}

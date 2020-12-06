@@ -35,7 +35,7 @@ func notUsed_CondBinaryExpr_NotOK() {
 }
 
 func notUsed_Var2_CondBinaryExpr_NotOK() {
-	v := longCallWithReturnValue(
+	v := callWithVariadicArgsAndReturn(
 		nil,
 		nil,
 		nil,
@@ -75,8 +75,8 @@ func notUsed_DifferentVarsWithSameName_NotOK() {
 	a, b := returnTwoValues()
 	if b != nil {
 		noOp1(a)
-		noOp2(b)
 	}
+	noOp2(b)
 }
 
 // Cases where short syntax SHOULD NOT be used AND IS NOT used.
@@ -100,90 +100,90 @@ func notUsed_IfStmt_CondBinaryExpr_OK() {
 }
 
 func notUsed_IfStmt_CondBinaryExpr_MethodCall_OK() {
-	err := errors.New("")
-	if str := err.Error(); str != "" {
-		noOp1(err)
+	dt := returnDummyType()
+	if v := dt.returnValue(); v == nil {
+		noOp1(v)
 	}
-	if err != nil {
-		noOp2(err)
+	if dt.v != nil {
+		noOp2(dt)
 	}
 }
 
 func notUsed_IfStmt_CondCallExpr_OK() {
-	err := errors.New("")
-	if err != nil {
-		noOp1(err)
+	v := returnValue()
+	if v != nil {
+		noOp1(v)
 	}
-	if errors.Is(err, errors.New("")) {
-		noOp2(err)
+	if callWithOneArgAndReturn(v) != nil {
+		noOp2(v)
 	}
 }
 
 func notUsed_GoStmt_OK() {
-	err := errors.New("")
-	if err != nil {
-		noOp1(err)
+	v := returnValue()
+	if v != nil {
+		noOp1(v)
 	}
-	go noOp2(err)
+	go noOp2(v)
 }
 
-func notUsed_ReturnStmt_OK() error {
-	err := errors.New("")
-	if err != nil {
-		noOp1(err)
+func notUsed_ReturnStmt_OK() interface{} {
+	v := returnValue()
+	if v != nil {
+		noOp1(v)
 	}
-	return err
+	return v
 }
 
 func notUsed_SendStmt_OK() {
-	err := errors.New("")
-	if err != nil {
-		noOp1(err)
+	v := returnValue()
+	if v != nil {
+		noOp1(v)
 	}
 
-	errChan := make(chan error, 1)
-	errChan <- err
+	vChan := make(chan interface{}, 1)
+	vChan <- v
 }
 
 func notUsed_SwitchStmt_Tag_OK() {
-	err := errors.New("")
-	if err != nil {
-		noOp1(err)
+	v := returnValue()
+	if v != nil {
+		noOp1(v)
 	}
-	switch err {
+	switch v {
 	case nil:
 	}
 }
 
 func notUsed_SwitchStmt_CaseList_OK() {
-	err := errors.New("")
-	if err != nil {
-		noOp1(err)
+	v := returnValue()
+	if v != nil {
+		noOp1(v)
 	}
 	switch {
-	case err == nil:
+	case v == nil:
 	}
 }
 
 func notUsed_SwitchStmt_CaseBody_OK() {
-	err := errors.New("")
-	if err != nil {
-		noOp1(err)
+	v := returnValue()
+	if v != nil {
+		noOp1(v)
 	}
 	switch {
 	case true:
-		noOp2(err)
+		noOp2(v)
 	}
 }
 
 func notUsed_SwitchStmt_Body_OK() {
-	err := errors.New("")
-	if err != nil {
-		noOp1(err)
+	a := returnValue()
+	if a != nil {
+		noOp1(a)
 	}
-	err2 := errors.New("")
-	switch err2 {
-	case err:
+	b := returnValue()
+	switch b {
+	case a:
 	}
 }
 
@@ -196,9 +196,9 @@ func notUsed_MultipleAssignments_OK() {
 }
 
 func notUsed_LongDecl_OK() {
-	err := errors.New("Long long long long long declaration, linter shouldn't force short syntax for it")
-	if err != nil {
-		noOp1(err)
+	v := callWithVariadicArgsAndReturn("Long long long long long declaration, linter shouldn't force short syntax for it")
+	if v != nil {
+		noOp1(v)
 	}
 }
 
@@ -214,8 +214,8 @@ func notUsed_MethodCallWithAssignment_OK() {
 	if dt.v != nil {
 	}
 
-	err := dt.returnValue()
-	noOp1(err)
+	v := dt.returnValue()
+	noOp1(v)
 }
 
 func notUsed_MethodCall_Nested_OK() {
