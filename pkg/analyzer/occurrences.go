@@ -25,9 +25,9 @@ func (lmo lhsMarkeredOccurences) getLhsMarker(pos token.Pos) int64 {
 	var m int64
 	var foundPos token.Pos
 
-	for lhsMarker, occ := range lmo {
+	for marker, occ := range lmo {
 		if occ.declarationPos < pos && occ.declarationPos >= foundPos {
-			m = lhsMarker
+			m = marker
 			foundPos = occ.declarationPos
 		}
 	}
@@ -46,30 +46,30 @@ func (lmo lhsMarkeredOccurences) getLatestLhsMarker() int64 {
 }
 
 func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurrenceMap {
-	occs := namedOccurrenceMap(map[string]lhsMarkeredOccurences{})
+	nom := namedOccurrenceMap(map[string]lhsMarkeredOccurences{})
 
 	for _, stmt := range fdecl.Body.List {
 		switch v := stmt.(type) {
 		case *ast.AssignStmt:
-			occs.addFromAssignment(pass, v)
+			nom.addFromAssignment(pass, v)
 		case *ast.IfStmt:
-			occs.addFromCondition(v)
-			occs.addFromIfClause(v)
-			occs.addFromElseClause(v)
+			nom.addFromCondition(v)
+			nom.addFromIfClause(v)
+			nom.addFromElseClause(v)
 		}
 	}
 
 	candidates := namedOccurrenceMap(map[string]lhsMarkeredOccurences{})
 
-	for varName, occ := range occs {
-		for lhs, o := range occ {
-			if o.declarationPos != token.NoPos || occs.isFoundByLhsMarker(lhs) {
+	for varName, markeredOccs := range nom {
+		for marker, occ := range markeredOccs {
+			if occ.declarationPos != token.NoPos || nom.isFoundByLhsMarker(marker) {
 				if _, ok := candidates[varName]; !ok {
 					candidates[varName] = lhsMarkeredOccurences{
-						lhs: o,
+						marker: occ,
 					}
 				} else {
-					candidates[varName][lhs] = o
+					candidates[varName][marker] = occ
 				}
 			}
 		}
@@ -79,8 +79,8 @@ func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurr
 
 func (nom namedOccurrenceMap) isFoundByLhsMarker(lhsMarker int64) bool {
 	var i int
-	for _, markeredOcc := range nom {
-		for marker := range markeredOcc {
+	for _, markeredOccs := range nom {
+		for marker := range markeredOccs {
 			if marker == lhsMarker {
 				i++
 			}
@@ -97,23 +97,23 @@ func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment 
 	lhsMarker := time.Now().UnixNano()
 
 	for i, el := range assignment.Lhs {
-		lhsIdent, ok := el.(*ast.Ident)
+		ident, ok := el.(*ast.Ident)
 		if !ok {
 			continue
 		}
 
-		if lhsIdent.Name != "_" && lhsIdent.Obj != nil { //&& lhsIdent.Obj.Pos() == lhsIdent.Pos() {
-			if oi, ok := nom[lhsIdent.Name]; ok {
-				oi[lhsMarker] = occurrence{
-					declarationPos: lhsIdent.Pos(),
+		if ident.Name != "_" && ident.Obj != nil {
+			if markeredOccs, ok := nom[ident.Name]; ok {
+				markeredOccs[lhsMarker] = occurrence{
+					declarationPos: ident.Pos(),
 				}
-				nom[lhsIdent.Name] = oi
+				nom[ident.Name] = markeredOccs
 			} else {
 				newOcc := occurrence{}
 				if areFlagSettingsSatisfied(pass, assignment, i) {
-					newOcc.declarationPos = lhsIdent.Pos()
+					newOcc.declarationPos = ident.Pos()
 				}
-				nom[lhsIdent.Name] = lhsMarkeredOccurences{lhsMarker: newOcc}
+				nom[ident.Name] = lhsMarkeredOccurences{lhsMarker: newOcc}
 			}
 		}
 	}
@@ -197,10 +197,10 @@ func (nom namedOccurrenceMap) addFromIdent(ifPos token.Pos, v ast.Expr) {
 		return
 	}
 
-	if markeredOcc, ok := nom[ident.Name]; ok {
+	if markeredOccs, ok := nom[ident.Name]; ok {
 		marker := nom[ident.Name].getLatestLhsMarker()
 
-		occ := markeredOcc[marker]
+		occ := markeredOccs[marker]
 		if occ.ifStmtPos != token.NoPos && occ.declarationPos != token.NoPos {
 			return
 		}
