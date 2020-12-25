@@ -34,14 +34,15 @@ func (lmo lhsMarkeredOccurences) getLhsMarker(pos token.Pos) int64 {
 	return m
 }
 
-func (lmo lhsMarkeredOccurences) getLatestLhs() int64 {
-	var maxLhs int64
-	for lhs := range lmo {
-		if lhs > maxLhs {
-			maxLhs = lhs
+func (lmo lhsMarkeredOccurences) getLatestLhsMarker() int64 {
+	var maxLhsMarker int64
+
+	for marker := range lmo {
+		if marker > maxLhsMarker {
+			maxLhsMarker = marker
 		}
 	}
-	return maxLhs
+	return maxLhsMarker
 }
 
 func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurrenceMap {
@@ -50,11 +51,11 @@ func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurr
 	for _, stmt := range fdecl.Body.List {
 		switch v := stmt.(type) {
 		case *ast.AssignStmt:
-			occs.addOccurrencesFromAssignment(pass, v)
+			occs.addFromAssignment(pass, v)
 		case *ast.IfStmt:
-			occs.addOccurrenceFromCondition(v)
-			occs.addOccurrenceFromIfClause(v)
-			occs.addOccurrenceFromElseClause(v)
+			occs.addFromCondition(v)
+			occs.addFromIfClause(v)
+			occs.addFromElseClause(v)
 		}
 	}
 
@@ -76,11 +77,11 @@ func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurr
 	return candidates
 }
 
-func (candidates namedOccurrenceMap) isFoundByLhsMarker(lhsMarker int64) bool {
+func (nom namedOccurrenceMap) isFoundByLhsMarker(lhsMarker int64) bool {
 	var i int
-	for _, v := range candidates {
-		for lhs := range v {
-			if lhs == lhsMarker {
+	for _, markeredOcc := range nom {
+		for marker := range markeredOcc {
+			if marker == lhsMarker {
 				i++
 			}
 		}
@@ -88,7 +89,7 @@ func (candidates namedOccurrenceMap) isFoundByLhsMarker(lhsMarker int64) bool {
 	return i >= 2
 }
 
-func (candidates namedOccurrenceMap) addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt) {
+func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt) {
 	if assignment.Tok != token.DEFINE {
 		return
 	}
@@ -102,17 +103,17 @@ func (candidates namedOccurrenceMap) addOccurrencesFromAssignment(pass *analysis
 		}
 
 		if lhsIdent.Name != "_" && lhsIdent.Obj != nil { //&& lhsIdent.Obj.Pos() == lhsIdent.Pos() {
-			if oi, ok := candidates[lhsIdent.Name]; ok {
+			if oi, ok := nom[lhsIdent.Name]; ok {
 				oi[lhsMarker] = occurrence{
 					declarationPos: lhsIdent.Pos(),
 				}
-				candidates[lhsIdent.Name] = oi
+				nom[lhsIdent.Name] = oi
 			} else {
 				newOcc := occurrence{}
 				if areFlagSettingsSatisfied(pass, assignment, i) {
 					newOcc.declarationPos = lhsIdent.Pos()
 				}
-				candidates[lhsIdent.Name] = lhsMarkeredOccurences{lhsMarker: newOcc}
+				nom[lhsIdent.Name] = lhsMarkeredOccurences{lhsMarker: newOcc}
 			}
 		}
 	}
@@ -135,38 +136,38 @@ func areFlagSettingsSatisfied(pass *analysis.Pass, assignment *ast.AssignStmt, i
 	return true
 }
 
-func (candidates namedOccurrenceMap) addOccurrenceFromCondition(stmt *ast.IfStmt) {
+func (nom namedOccurrenceMap) addFromCondition(stmt *ast.IfStmt) {
 	switch v := stmt.Cond.(type) {
 	case *ast.BinaryExpr:
 		for _, v := range [2]ast.Expr{v.X, v.Y} {
 			switch e := v.(type) {
 			case *ast.Ident:
-				candidates.addOccurrenceFromIdent(stmt.If, e)
+				nom.addFromIdent(stmt.If, e)
 			case *ast.SelectorExpr:
-				candidates.addOccurrenceFromIdent(stmt.If, e.X)
+				nom.addFromIdent(stmt.If, e.X)
 			}
 		}
 	case *ast.CallExpr:
 		for _, a := range v.Args {
 			switch e := a.(type) {
 			case *ast.Ident:
-				candidates.addOccurrenceFromIdent(stmt.If, e)
+				nom.addFromIdent(stmt.If, e)
 			case *ast.CallExpr:
-				candidates.addOccurrenceFromCallExpr(stmt.If, e)
+				nom.addFromCallExpr(stmt.If, e)
 			}
 		}
 	}
 }
 
-func (candidates namedOccurrenceMap) addOccurrenceFromIfClause(stmt *ast.IfStmt) {
-	candidates.addOccurrenceFromBlockStmt(stmt.Body, stmt.If)
+func (nom namedOccurrenceMap) addFromIfClause(stmt *ast.IfStmt) {
+	nom.addFromBlockStmt(stmt.Body, stmt.If)
 }
 
-func (candidates namedOccurrenceMap) addOccurrenceFromElseClause(stmt *ast.IfStmt) {
-	candidates.addOccurrenceFromBlockStmt(stmt.Else, stmt.If)
+func (nom namedOccurrenceMap) addFromElseClause(stmt *ast.IfStmt) {
+	nom.addFromBlockStmt(stmt.Else, stmt.If)
 }
 
-func (candidates namedOccurrenceMap) addOccurrenceFromBlockStmt(stmt ast.Stmt, ifPos token.Pos) {
+func (nom namedOccurrenceMap) addFromBlockStmt(stmt ast.Stmt, ifPos token.Pos) {
 	blockStmt, ok := stmt.(*ast.BlockStmt)
 	if !ok {
 		return
@@ -179,32 +180,32 @@ func (candidates namedOccurrenceMap) addOccurrenceFromBlockStmt(stmt ast.Stmt, i
 		}
 
 		if callExpr, ok := exptStmt.X.(*ast.CallExpr); ok {
-			candidates.addOccurrenceFromCallExpr(ifPos, callExpr)
+			nom.addFromCallExpr(ifPos, callExpr)
 		}
 	}
 }
 
-func (nmo namedOccurrenceMap) addOccurrenceFromCallExpr(ifPos token.Pos, callExpr *ast.CallExpr) {
+func (nom namedOccurrenceMap) addFromCallExpr(ifPos token.Pos, callExpr *ast.CallExpr) {
 	for _, arg := range callExpr.Args {
-		nmo.addOccurrenceFromIdent(ifPos, arg)
+		nom.addFromIdent(ifPos, arg)
 	}
 }
 
-func (nmo namedOccurrenceMap) addOccurrenceFromIdent(ifPos token.Pos, v ast.Expr) {
+func (nom namedOccurrenceMap) addFromIdent(ifPos token.Pos, v ast.Expr) {
 	ident, ok := v.(*ast.Ident)
 	if !ok {
 		return
 	}
 
-	if oi, ok := nmo[ident.Name]; ok {
-		lhs := nmo[ident.Name].getLatestLhs()
+	if markeredOcc, ok := nom[ident.Name]; ok {
+		marker := nom[ident.Name].getLatestLhsMarker()
 
-		o := oi[lhs]
-		if o.ifStmtPos != token.NoPos && o.declarationPos != token.NoPos {
+		occ := markeredOcc[marker]
+		if occ.ifStmtPos != token.NoPos && occ.declarationPos != token.NoPos {
 			return
 		}
 
-		o.ifStmtPos = ifPos
-		nmo[ident.Name][lhs] = o
+		occ.ifStmtPos = ifPos
+		nom[ident.Name][marker] = occ
 	}
 }
