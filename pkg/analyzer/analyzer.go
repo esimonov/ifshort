@@ -117,7 +117,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func checkIfCandidate(candidates map[string]map[int64]occurrence, e ast.Expr, ifPos token.Pos) {
+func checkIfCandidate(candidates map[string]lhsMarkeredOccurences, e ast.Expr, ifPos token.Pos) {
 	switch v := e.(type) {
 	case *ast.CallExpr:
 		for _, arg := range v.Args {
@@ -144,7 +144,7 @@ func checkIfCandidate(candidates map[string]map[int64]occurrence, e ast.Expr, if
 	}
 }
 
-func isEmponymousKey(pos token.Pos, occs map[int64]occurrence) bool {
+func isEmponymousKey(pos token.Pos, occs lhsMarkeredOccurences) bool {
 	for _, o := range occs {
 		if o.ifStmtPos == pos {
 			return true
@@ -153,7 +153,7 @@ func isEmponymousKey(pos token.Pos, occs map[int64]occurrence) bool {
 	return false
 }
 
-func checkCandidate(candidates map[string]map[int64]occurrence, e ast.Expr) {
+func checkCandidate(candidates map[string]lhsMarkeredOccurences, e ast.Expr) {
 	switch v := e.(type) {
 	case *ast.CallExpr:
 		for _, arg := range v.Args {
@@ -176,7 +176,7 @@ func checkCandidate(candidates map[string]map[int64]occurrence, e ast.Expr) {
 			}
 		}
 	case *ast.Ident:
-		lhsMarker1 := getLhsMarker(candidates[v.Name], v.Pos())
+		lhsMarker1 := candidates[v.Name].getLhsMarker(v.Pos())
 		occ := candidates[v.Name][lhsMarker1]
 		if v.Pos() != occ.ifStmtPos && v.Pos() != occ.declarationPos {
 			delete(candidates[v.Name], lhsMarker1)
@@ -192,19 +192,4 @@ func checkCandidate(candidates map[string]map[int64]occurrence, e ast.Expr) {
 	case *ast.UnaryExpr:
 		checkCandidate(candidates, v.X)
 	}
-}
-
-// find lhs marker of the greatest token.Pos that is smaller than provided.
-func getLhsMarker(occs map[int64]occurrence, pos token.Pos) int64 {
-	var m int64
-	var foundPos token.Pos
-
-	for lhsMarker, occ := range occs {
-		if occ.declarationPos < pos && occ.declarationPos >= foundPos {
-			m = lhsMarker
-			foundPos = occ.declarationPos
-		}
-	}
-
-	return m
 }

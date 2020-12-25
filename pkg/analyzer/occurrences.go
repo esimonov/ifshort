@@ -13,8 +13,24 @@ type occurrence struct {
 	ifStmtPos      token.Pos
 }
 
-func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]map[int64]occurrence {
-	occs := map[string]map[int64]occurrence{}
+type lhsMarkeredOccurences map[int64]occurrence
+
+// find lhs marker of the greatest token.Pos that is smaller than provided.
+func (lmo lhsMarkeredOccurences) getLhsMarker(pos token.Pos) int64 {
+	var m int64
+	var foundPos token.Pos
+
+	for lhsMarker, occ := range lmo {
+		if occ.declarationPos < pos && occ.declarationPos >= foundPos {
+			m = lhsMarker
+			foundPos = occ.declarationPos
+		}
+	}
+	return m
+}
+
+func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]lhsMarkeredOccurences {
+	occs := map[string]lhsMarkeredOccurences{}
 
 	for _, stmt := range fdecl.Body.List {
 		switch v := stmt.(type) {
@@ -27,13 +43,13 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]map[i
 		}
 	}
 
-	candidates := map[string]map[int64]occurrence{}
+	candidates := map[string]lhsMarkeredOccurences{}
 
 	for varName, occ := range occs {
 		for lhs, o := range occ {
 			if o.declarationPos != token.NoPos || isFoundByLhsMarker(occs, lhs) {
 				if _, ok := candidates[varName]; !ok {
-					candidates[varName] = map[int64]occurrence{
+					candidates[varName] = lhsMarkeredOccurences{
 						lhs: o,
 					}
 				} else {
@@ -45,7 +61,7 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]map[i
 	return candidates
 }
 
-func isFoundByLhsMarker(candidates map[string]map[int64]occurrence, lhsMarker int64) bool {
+func isFoundByLhsMarker(candidates map[string]lhsMarkeredOccurences, lhsMarker int64) bool {
 	var i int
 	for _, v := range candidates {
 		for lhs := range v {
@@ -57,7 +73,7 @@ func isFoundByLhsMarker(candidates map[string]map[int64]occurrence, lhsMarker in
 	return i >= 2
 }
 
-func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt, occs map[string]map[int64]occurrence) {
+func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt, occs map[string]lhsMarkeredOccurences) {
 	if assignment.Tok != token.DEFINE {
 		return
 	}
@@ -81,7 +97,7 @@ func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStm
 				if areFlagSettingsSatisfied(pass, assignment, i) {
 					newOcc.declarationPos = lhsIdent.Pos()
 				}
-				occs[lhsIdent.Name] = map[int64]occurrence{lhsMarker: newOcc}
+				occs[lhsIdent.Name] = lhsMarkeredOccurences{lhsMarker: newOcc}
 			}
 		}
 	}
@@ -104,7 +120,7 @@ func areFlagSettingsSatisfied(pass *analysis.Pass, assignment *ast.AssignStmt, i
 	return true
 }
 
-func addOccurrenceFromCondition(stmt *ast.IfStmt, occs map[string]map[int64]occurrence) {
+func addOccurrenceFromCondition(stmt *ast.IfStmt, occs map[string]lhsMarkeredOccurences) {
 	switch v := stmt.Cond.(type) {
 	case *ast.BinaryExpr:
 		for _, v := range [2]ast.Expr{v.X, v.Y} {
@@ -127,15 +143,15 @@ func addOccurrenceFromCondition(stmt *ast.IfStmt, occs map[string]map[int64]occu
 	}
 }
 
-func addOccurrenceFromIfClause(stmt *ast.IfStmt, occs map[string]map[int64]occurrence) {
+func addOccurrenceFromIfClause(stmt *ast.IfStmt, occs map[string]lhsMarkeredOccurences) {
 	addOccurrenceFromBlockStmt(stmt.Body, stmt.If, occs)
 }
 
-func addOccurrenceFromElseClause(stmt *ast.IfStmt, occs map[string]map[int64]occurrence) {
+func addOccurrenceFromElseClause(stmt *ast.IfStmt, occs map[string]lhsMarkeredOccurences) {
 	addOccurrenceFromBlockStmt(stmt.Else, stmt.If, occs)
 }
 
-func addOccurrenceFromBlockStmt(stmt ast.Stmt, ifPos token.Pos, occs map[string]map[int64]occurrence) {
+func addOccurrenceFromBlockStmt(stmt ast.Stmt, ifPos token.Pos, occs map[string]lhsMarkeredOccurences) {
 	blockStmt, ok := stmt.(*ast.BlockStmt)
 	if !ok {
 		return
@@ -153,13 +169,13 @@ func addOccurrenceFromBlockStmt(stmt ast.Stmt, ifPos token.Pos, occs map[string]
 	}
 }
 
-func addOccurrenceFromCallExpr(occs map[string]map[int64]occurrence, ifPos token.Pos, callExpr *ast.CallExpr) {
+func addOccurrenceFromCallExpr(occs map[string]lhsMarkeredOccurences, ifPos token.Pos, callExpr *ast.CallExpr) {
 	for _, arg := range callExpr.Args {
 		addOccurrenceFromIdent(occs, ifPos, arg)
 	}
 }
 
-func addOccurrenceFromIdent(occs map[string]map[int64]occurrence, ifPos token.Pos, v ast.Expr) {
+func addOccurrenceFromIdent(occs map[string]lhsMarkeredOccurences, ifPos token.Pos, v ast.Expr) {
 	ident, ok := v.(*ast.Ident)
 	if !ok {
 		return
@@ -178,7 +194,7 @@ func addOccurrenceFromIdent(occs map[string]map[int64]occurrence, ifPos token.Po
 	}
 }
 
-func getLatestLhs(o map[int64]occurrence) int64 {
+func getLatestLhs(o lhsMarkeredOccurences) int64 {
 	var maxLhs int64
 	for lhs := range o {
 		if lhs > maxLhs {
