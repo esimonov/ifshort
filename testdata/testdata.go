@@ -187,12 +187,22 @@ func notUsed_SwitchStmt_Body_OK() {
 	}
 }
 
-func notUsed_MultipleAssignments_OK() {
+func notUsed_MultipleAssignments_OK() interface{} {
 	a, b := returnTwoValues()
 	if a != nil {
+		return a
+	}
+	return b
+}
+
+func notUsed_MultipleAssignments_WhenFlagSettingsAreNotSatisfied_OK() {
+	longDeclarationToDissatisfyFlagSettings, b := returnTwoValues()
+	if b != nil {
 		return
 	}
-	noOp1(b)
+
+	c := callWithOneArgAndReturn(longDeclarationToDissatisfyFlagSettings)
+	noOp1(c)
 }
 
 func notUsed_LongDecl_OK() {

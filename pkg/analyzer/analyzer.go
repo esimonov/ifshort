@@ -46,17 +46,24 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	inspector.Preorder(nodeFilter, func(node ast.Node) {
 		fdecl := node.(*ast.FuncDecl)
 
-		/*if fdecl.Name.Name != "notUsed_CondCallExpr_NotOK" {
+		/*if fdecl.Name.Name != "notUsed_MultipleAssignments_WhenFlagSettingsAreNotSatisfied_OK" {
 			return
 		}*/
 
-		candidates := map[string]occurrenceInfo{}
+		candidates := map[string]map[int64]occurrenceInfo{}
 		occurrences := getOccurrenceMap(fdecl, pass)
 
 		for varName, occ := range occurrences {
-			if occ.ifStmtPos > occ.declarationPos && occ.declarationPos != 0 ||
-				isFoundByLhsMarker(occurrences, occ.lhsMarker) {
-				candidates[varName] = occ
+			for lhs, o := range occ {
+				if o.declarationPos != 0 || isFoundByLhsMarker(occurrences, lhs) {
+					if _, ok := candidates[varName]; !ok {
+						candidates[varName] = map[int64]occurrenceInfo{
+							lhs: o,
+						}
+					} else {
+						candidates[varName][lhs] = o
+					}
+				}
 			}
 		}
 
@@ -123,25 +130,29 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 
 		for varName := range candidates {
-			pass.Reportf(candidates[varName].declarationPos,
-				"variable '%s' is only used in the if-statement (%s); consider using short syntax",
-				varName, pass.Fset.Position(candidates[varName].ifStmtPos))
+			for _, o := range candidates[varName] {
+				pass.Reportf(o.declarationPos,
+					"variable '%s' is only used in the if-statement (%s); consider using short syntax",
+					varName, pass.Fset.Position(o.ifStmtPos))
+			}
 		}
 	})
 	return nil, nil
 }
 
-func isFoundByLhsMarker(candidates map[string]occurrenceInfo, lhsMarker int64) bool {
+func isFoundByLhsMarker(candidates map[string]map[int64]occurrenceInfo, lhsMarker int64) bool {
 	var i int
 	for _, v := range candidates {
-		if v.lhsMarker == lhsMarker {
-			i++
+		for lhs := range v {
+			if lhs == lhsMarker {
+				i++
+			}
 		}
 	}
 	return i >= 2
 }
 
-func checkIfCandidate(candidates map[string]occurrenceInfo, e ast.Expr, ifPos token.Pos) {
+func checkIfCandidate(candidates map[string]map[int64]occurrenceInfo, e ast.Expr, ifPos token.Pos) {
 	switch v := e.(type) {
 	case *ast.CallExpr:
 		for _, arg := range v.Args {
@@ -151,15 +162,16 @@ func checkIfCandidate(candidates map[string]occurrenceInfo, e ast.Expr, ifPos to
 			checkIfCandidate(candidates, fun.X, ifPos)
 		}
 	case *ast.Ident:
-		if _, ok := candidates[v.Name]; !ok {
-			return
-		}
-		if ifPos != candidates[v.Name].ifStmtPos {
-			lhsMarker := candidates[v.Name].lhsMarker
-			delete(candidates, v.Name)
-			for k, v := range candidates {
-				if v.lhsMarker == lhsMarker {
-					delete(candidates, k)
+		for _, occ := range candidates[v.Name] {
+			if !isEmponymousKey(ifPos, candidates[v.Name]) {
+				lhsMarker := occ.lhsMarker
+				delete(candidates[v.Name], lhsMarker)
+				for k, v := range candidates {
+					for _, o := range v {
+						if o.lhsMarker == lhsMarker {
+							delete(candidates, k)
+						}
+					}
 				}
 			}
 		}
@@ -168,7 +180,16 @@ func checkIfCandidate(candidates map[string]occurrenceInfo, e ast.Expr, ifPos to
 	}
 }
 
-func checkCandidate(candidates map[string]occurrenceInfo, e ast.Expr) {
+func isEmponymousKey(pos token.Pos, occs map[int64]occurrenceInfo) bool {
+	for _, o := range occs {
+		if o.ifStmtPos == pos {
+			return true
+		}
+	}
+	return false
+}
+
+func checkCandidate(candidates map[string]map[int64]occurrenceInfo, e ast.Expr) {
 	switch v := e.(type) {
 	case *ast.CallExpr:
 		for _, arg := range v.Args {
@@ -177,20 +198,49 @@ func checkCandidate(candidates map[string]occurrenceInfo, e ast.Expr) {
 		if fun, ok := v.Fun.(*ast.SelectorExpr); ok {
 			checkCandidate(candidates, fun.X)
 		}
-	case *ast.Ident:
-		if _, ok := candidates[v.Name]; !ok {
-			return
+	case *ast.CompositeLit:
+		for _, el := range v.Elts {
+			kv, ok := el.(*ast.KeyValueExpr)
+			if !ok {
+				continue
+			}
+			if ident, ok := kv.Key.(*ast.Ident); ok {
+				checkCandidate(candidates, ident)
+			}
+			if ident, ok := kv.Value.(*ast.Ident); ok {
+				checkCandidate(candidates, ident)
+			}
 		}
-		if v.Pos() != candidates[v.Name].ifStmtPos && v.Pos() != candidates[v.Name].declarationPos {
-			lhsMarker := candidates[v.Name].lhsMarker
-			delete(candidates, v.Name)
-			for k, v := range candidates {
-				if v.lhsMarker == lhsMarker {
-					delete(candidates, k)
+	case *ast.Ident:
+		lhsMarker := getLhsMarker(candidates[v.Name], v.Pos())
+		occ := candidates[v.Name][lhsMarker]
+		if v.Pos() != occ.ifStmtPos && v.Pos() != occ.declarationPos {
+			delete(candidates[v.Name], lhsMarker)
+			for k := range candidates {
+				for _, occ2 := range candidates[k] {
+					if occ2.lhsMarker == lhsMarker {
+						delete(candidates[k], lhsMarker)
+					}
 				}
 			}
 		}
+
 	case *ast.UnaryExpr:
 		checkCandidate(candidates, v.X)
 	}
+}
+
+// find lhs marker of the greatest token.Pos that is smaller than provided.
+func getLhsMarker(occs map[int64]occurrenceInfo, pos token.Pos) int64 {
+	var m int64
+	var foundPos token.Pos
+
+	for lhsMarker, occ := range occs {
+		if occ.declarationPos < pos && occ.declarationPos >= foundPos {
+			m = lhsMarker
+			foundPos = occ.declarationPos
+		}
+	}
+
+	return m
 }

@@ -14,8 +14,8 @@ type occurrenceInfo struct {
 	lhsMarker      int64
 }
 
-func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]occurrenceInfo {
-	occs := map[string]occurrenceInfo{}
+func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]map[int64]occurrenceInfo {
+	occs := map[string]map[int64]occurrenceInfo{}
 
 	for _, stmt := range fdecl.Body.List {
 		switch v := stmt.(type) {
@@ -30,7 +30,11 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]occur
 	return occs
 }
 
-func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt, occs map[string]occurrenceInfo) {
+func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt, occs map[string]map[int64]occurrenceInfo) {
+	if assignment.Tok != token.DEFINE {
+		return
+	}
+
 	lhsMarker := time.Now().UnixNano()
 
 	for i, el := range assignment.Lhs {
@@ -39,15 +43,19 @@ func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStm
 			continue
 		}
 
-		if lhsIdent.Name != "_" && lhsIdent.Obj != nil && lhsIdent.Obj.Pos() == lhsIdent.Pos() {
-			if _, ok := occs[lhsIdent.Name]; ok {
-				//oi.declarationPos = lhsIdent.Pos()
-				//occs[lhsIdent.Name] = oi
-			} else if areFlagSettingsSatisfied(pass, assignment, i) {
-				occs[lhsIdent.Name] = occurrenceInfo{
+		if lhsIdent.Name != "_" && lhsIdent.Obj != nil { //&& lhsIdent.Obj.Pos() == lhsIdent.Pos() {
+			if oi, ok := occs[lhsIdent.Name]; ok {
+				oi[lhsMarker] = occurrenceInfo{
 					declarationPos: lhsIdent.Pos(),
 					lhsMarker:      lhsMarker,
 				}
+				occs[lhsIdent.Name] = oi
+			} else {
+				newOcc := occurrenceInfo{lhsMarker: lhsMarker}
+				if areFlagSettingsSatisfied(pass, assignment, i) {
+					newOcc.declarationPos = lhsIdent.Pos()
+				}
+				occs[lhsIdent.Name] = map[int64]occurrenceInfo{lhsMarker: newOcc}
 			}
 		}
 	}
@@ -70,7 +78,7 @@ func areFlagSettingsSatisfied(pass *analysis.Pass, assignment *ast.AssignStmt, i
 	return true
 }
 
-func addOccurrenceFromCondition(stmt *ast.IfStmt, occs map[string]occurrenceInfo) {
+func addOccurrenceFromCondition(stmt *ast.IfStmt, occs map[string]map[int64]occurrenceInfo) {
 	switch v := stmt.Cond.(type) {
 	case *ast.BinaryExpr:
 		for _, v := range [2]ast.Expr{v.X, v.Y} {
@@ -93,15 +101,15 @@ func addOccurrenceFromCondition(stmt *ast.IfStmt, occs map[string]occurrenceInfo
 	}
 }
 
-func addOccurrenceFromIfClause(stmt *ast.IfStmt, occs map[string]occurrenceInfo) {
+func addOccurrenceFromIfClause(stmt *ast.IfStmt, occs map[string]map[int64]occurrenceInfo) {
 	addOccurrenceFromBlockStmt(stmt.Body, stmt.If, occs)
 }
 
-func addOccurrenceFromElseClause(stmt *ast.IfStmt, occs map[string]occurrenceInfo) {
+func addOccurrenceFromElseClause(stmt *ast.IfStmt, occs map[string]map[int64]occurrenceInfo) {
 	addOccurrenceFromBlockStmt(stmt.Else, stmt.If, occs)
 }
 
-func addOccurrenceFromBlockStmt(stmt ast.Stmt, ifPos token.Pos, occs map[string]occurrenceInfo) {
+func addOccurrenceFromBlockStmt(stmt ast.Stmt, ifPos token.Pos, occs map[string]map[int64]occurrenceInfo) {
 	blockStmt, ok := stmt.(*ast.BlockStmt)
 	if !ok {
 		return
@@ -119,21 +127,33 @@ func addOccurrenceFromBlockStmt(stmt ast.Stmt, ifPos token.Pos, occs map[string]
 	}
 }
 
-func addOccurrenceFromCallExpr(occs map[string]occurrenceInfo, ifPos token.Pos, callExpr *ast.CallExpr) {
+func addOccurrenceFromCallExpr(occs map[string]map[int64]occurrenceInfo, ifPos token.Pos, callExpr *ast.CallExpr) {
 	for _, arg := range callExpr.Args {
 		addOccurrenceFromIdent(occs, ifPos, arg)
 	}
 }
 
-func addOccurrenceFromIdent(occs map[string]occurrenceInfo, ifPos token.Pos, v ast.Expr) {
+func addOccurrenceFromIdent(occs map[string]map[int64]occurrenceInfo, ifPos token.Pos, v ast.Expr) {
 	if ident, ok := v.(*ast.Ident); ok {
 		if oi, ok := occs[ident.Name]; ok {
-			if oi.ifStmtPos != 0 && oi.declarationPos != 0 {
+			lhs := getLatestLhs(occs[ident.Name])
+			o := oi[lhs]
+			if o.ifStmtPos != 0 && o.declarationPos != 0 {
 				return
 			}
 
-			oi.ifStmtPos = ifPos
-			occs[ident.Name] = oi
+			o.ifStmtPos = ifPos
+			occs[ident.Name][lhs] = o
 		}
 	}
+}
+
+func getLatestLhs(o map[int64]occurrenceInfo) int64 {
+	var maxLhs int64
+	for lhs := range o {
+		if lhs > maxLhs {
+			maxLhs = lhs
+		}
+	}
+	return maxLhs
 }
