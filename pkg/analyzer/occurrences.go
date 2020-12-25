@@ -11,7 +11,6 @@ import (
 type occurrenceInfo struct {
 	declarationPos token.Pos
 	ifStmtPos      token.Pos
-	lhsMarker      int64
 }
 
 func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]map[int64]occurrenceInfo {
@@ -32,7 +31,7 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]map[i
 
 	for varName, occ := range occs {
 		for lhs, o := range occ {
-			if o.declarationPos != 0 || isFoundByLhsMarker(occs, lhs) {
+			if o.declarationPos != token.NoPos || isFoundByLhsMarker(occs, lhs) {
 				if _, ok := candidates[varName]; !ok {
 					candidates[varName] = map[int64]occurrenceInfo{
 						lhs: o,
@@ -75,11 +74,10 @@ func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStm
 			if oi, ok := occs[lhsIdent.Name]; ok {
 				oi[lhsMarker] = occurrenceInfo{
 					declarationPos: lhsIdent.Pos(),
-					lhsMarker:      lhsMarker,
 				}
 				occs[lhsIdent.Name] = oi
 			} else {
-				newOcc := occurrenceInfo{lhsMarker: lhsMarker}
+				newOcc := occurrenceInfo{}
 				if areFlagSettingsSatisfied(pass, assignment, i) {
 					newOcc.declarationPos = lhsIdent.Pos()
 				}
@@ -162,17 +160,21 @@ func addOccurrenceFromCallExpr(occs map[string]map[int64]occurrenceInfo, ifPos t
 }
 
 func addOccurrenceFromIdent(occs map[string]map[int64]occurrenceInfo, ifPos token.Pos, v ast.Expr) {
-	if ident, ok := v.(*ast.Ident); ok {
-		if oi, ok := occs[ident.Name]; ok {
-			lhs := getLatestLhs(occs[ident.Name])
-			o := oi[lhs]
-			if o.ifStmtPos != 0 && o.declarationPos != 0 {
-				return
-			}
+	ident, ok := v.(*ast.Ident)
+	if !ok {
+		return
+	}
 
-			o.ifStmtPos = ifPos
-			occs[ident.Name][lhs] = o
+	if oi, ok := occs[ident.Name]; ok {
+		lhs := getLatestLhs(occs[ident.Name])
+
+		o := oi[lhs]
+		if o.ifStmtPos != token.NoPos && o.declarationPos != token.NoPos {
+			return
 		}
+
+		o.ifStmtPos = ifPos
+		occs[ident.Name][lhs] = o
 	}
 }
 

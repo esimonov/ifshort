@@ -127,13 +127,12 @@ func checkIfCandidate(candidates map[string]map[int64]occurrenceInfo, e ast.Expr
 			checkIfCandidate(candidates, fun.X, ifPos)
 		}
 	case *ast.Ident:
-		for _, occ := range candidates[v.Name] {
+		for lhsMarker1 := range candidates[v.Name] {
 			if !isEmponymousKey(ifPos, candidates[v.Name]) {
-				lhsMarker := occ.lhsMarker
-				delete(candidates[v.Name], lhsMarker)
+				delete(candidates[v.Name], lhsMarker1)
 				for k, v := range candidates {
-					for _, o := range v {
-						if o.lhsMarker == lhsMarker {
+					for lhsMarker2 := range v {
+						if lhsMarker1 == lhsMarker2 {
 							delete(candidates, k)
 						}
 					}
@@ -177,14 +176,14 @@ func checkCandidate(candidates map[string]map[int64]occurrenceInfo, e ast.Expr) 
 			}
 		}
 	case *ast.Ident:
-		lhsMarker := getLhsMarker(candidates[v.Name], v.Pos())
-		occ := candidates[v.Name][lhsMarker]
+		lhsMarker1 := getLhsMarker(candidates[v.Name], v.Pos())
+		occ := candidates[v.Name][lhsMarker1]
 		if v.Pos() != occ.ifStmtPos && v.Pos() != occ.declarationPos {
-			delete(candidates[v.Name], lhsMarker)
+			delete(candidates[v.Name], lhsMarker1)
 			for k := range candidates {
-				for _, occ2 := range candidates[k] {
-					if occ2.lhsMarker == lhsMarker {
-						delete(candidates[k], lhsMarker)
+				for lhsMarker2 := range candidates[k] {
+					if lhsMarker1 == lhsMarker2 {
+						delete(candidates[k], lhsMarker2)
 					}
 				}
 			}
