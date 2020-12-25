@@ -42,63 +42,63 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			return
 		}*/
 
-		candidates := getOccurrenceMap(fdecl, pass)
+		candidates := getNamedOccurrenceMap(fdecl, pass)
 
 		for _, stmt := range fdecl.Body.List {
 			switch v := stmt.(type) {
 			case *ast.AssignStmt:
 				for _, el := range v.Rhs {
-					checkCandidate(candidates, el)
+					candidates.checkCandidate(el)
 				}
 			case *ast.DeferStmt:
 				for _, a := range v.Call.Args {
-					checkCandidate(candidates, a)
+					candidates.checkCandidate(a)
 				}
 			case *ast.ExprStmt:
 				if callExpr, ok := v.X.(*ast.CallExpr); ok {
-					checkCandidate(candidates, callExpr)
+					candidates.checkCandidate(callExpr)
 				}
 			case *ast.IfStmt:
 				switch cond := v.Cond.(type) {
 				case *ast.BinaryExpr:
-					checkIfCandidate(candidates, cond.X, v.If)
-					checkIfCandidate(candidates, cond.Y, v.If)
+					candidates.checkIfCandidate(cond.X, v.If)
+					candidates.checkIfCandidate(cond.Y, v.If)
 				case *ast.CallExpr:
-					checkIfCandidate(candidates, cond, v.If)
+					candidates.checkIfCandidate(cond, v.If)
 				}
 				if init, ok := v.Init.(*ast.AssignStmt); ok {
 					for _, e := range init.Rhs {
-						checkIfCandidate(candidates, e, v.If)
+						candidates.checkIfCandidate(e, v.If)
 					}
 				}
 			case *ast.GoStmt:
 				for _, a := range v.Call.Args {
-					checkCandidate(candidates, a)
+					candidates.checkCandidate(a)
 				}
 			case *ast.RangeStmt:
-				checkCandidate(candidates, v.X)
+				candidates.checkCandidate(v.X)
 			case *ast.ReturnStmt:
 				for _, r := range v.Results {
-					checkCandidate(candidates, r)
+					candidates.checkCandidate(r)
 				}
 			case *ast.SendStmt:
-				checkCandidate(candidates, v.Value)
+				candidates.checkCandidate(v.Value)
 			case *ast.SwitchStmt:
-				checkCandidate(candidates, v.Tag)
+				candidates.checkCandidate(v.Tag)
 				for _, el := range v.Body.List {
 					if clauses, ok := el.(*ast.CaseClause); ok {
 						for _, c := range clauses.List {
 							switch v := c.(type) {
 							case *ast.BinaryExpr:
-								checkCandidate(candidates, v.X)
-								checkCandidate(candidates, v.Y)
+								candidates.checkCandidate(v.X)
+								candidates.checkCandidate(v.Y)
 							case *ast.Ident:
-								checkCandidate(candidates, v)
+								candidates.checkCandidate(v)
 							}
 						}
 						for _, c := range clauses.Body {
 							if est, ok := c.(*ast.ExprStmt); ok {
-								checkCandidate(candidates, est.X)
+								candidates.checkCandidate(est.X)
 							}
 						}
 					}
@@ -117,14 +117,14 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func checkIfCandidate(candidates map[string]lhsMarkeredOccurences, e ast.Expr, ifPos token.Pos) {
+func (candidates namedOccurrenceMap) checkIfCandidate(e ast.Expr, ifPos token.Pos) {
 	switch v := e.(type) {
 	case *ast.CallExpr:
 		for _, arg := range v.Args {
-			checkIfCandidate(candidates, arg, ifPos)
+			candidates.checkIfCandidate(arg, ifPos)
 		}
 		if fun, ok := v.Fun.(*ast.SelectorExpr); ok {
-			checkIfCandidate(candidates, fun.X, ifPos)
+			candidates.checkIfCandidate(fun.X, ifPos)
 		}
 	case *ast.Ident:
 		for lhsMarker1 := range candidates[v.Name] {
@@ -140,7 +140,7 @@ func checkIfCandidate(candidates map[string]lhsMarkeredOccurences, e ast.Expr, i
 			}
 		}
 	case *ast.UnaryExpr:
-		checkIfCandidate(candidates, v.X, ifPos)
+		candidates.checkIfCandidate(v.X, ifPos)
 	}
 }
 
@@ -153,14 +153,14 @@ func isEmponymousKey(pos token.Pos, occs lhsMarkeredOccurences) bool {
 	return false
 }
 
-func checkCandidate(candidates map[string]lhsMarkeredOccurences, e ast.Expr) {
+func (candidates namedOccurrenceMap) checkCandidate(e ast.Expr) {
 	switch v := e.(type) {
 	case *ast.CallExpr:
 		for _, arg := range v.Args {
-			checkCandidate(candidates, arg)
+			candidates.checkCandidate(arg)
 		}
 		if fun, ok := v.Fun.(*ast.SelectorExpr); ok {
-			checkCandidate(candidates, fun.X)
+			candidates.checkCandidate(fun.X)
 		}
 	case *ast.CompositeLit:
 		for _, el := range v.Elts {
@@ -169,10 +169,10 @@ func checkCandidate(candidates map[string]lhsMarkeredOccurences, e ast.Expr) {
 				continue
 			}
 			if ident, ok := kv.Key.(*ast.Ident); ok {
-				checkCandidate(candidates, ident)
+				candidates.checkCandidate(ident)
 			}
 			if ident, ok := kv.Value.(*ast.Ident); ok {
-				checkCandidate(candidates, ident)
+				candidates.checkCandidate(ident)
 			}
 		}
 	case *ast.Ident:
@@ -188,8 +188,7 @@ func checkCandidate(candidates map[string]lhsMarkeredOccurences, e ast.Expr) {
 				}
 			}
 		}
-
 	case *ast.UnaryExpr:
-		checkCandidate(candidates, v.X)
+		candidates.checkCandidate(v.X)
 	}
 }

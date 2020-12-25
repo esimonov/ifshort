@@ -8,12 +8,17 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
+// occurrence is a variable occurrence.
 type occurrence struct {
 	declarationPos token.Pos
 	ifStmtPos      token.Pos
 }
 
+// lhsMarkeredOccurences is a map of left-hand side markers to occurrence.
 type lhsMarkeredOccurences map[int64]occurrence
+
+// namedOccurrenceMap is a map of variable names to lhsMarkeredOccurences.
+type namedOccurrenceMap map[string]lhsMarkeredOccurences
 
 // find lhs marker of the greatest token.Pos that is smaller than provided.
 func (lmo lhsMarkeredOccurences) getLhsMarker(pos token.Pos) int64 {
@@ -29,8 +34,18 @@ func (lmo lhsMarkeredOccurences) getLhsMarker(pos token.Pos) int64 {
 	return m
 }
 
-func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]lhsMarkeredOccurences {
-	occs := map[string]lhsMarkeredOccurences{}
+func (lmo lhsMarkeredOccurences) getLatestLhs() int64 {
+	var maxLhs int64
+	for lhs := range lmo {
+		if lhs > maxLhs {
+			maxLhs = lhs
+		}
+	}
+	return maxLhs
+}
+
+func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurrenceMap {
+	occs := namedOccurrenceMap(map[string]lhsMarkeredOccurences{})
 
 	for _, stmt := range fdecl.Body.List {
 		switch v := stmt.(type) {
@@ -43,11 +58,11 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]lhsMa
 		}
 	}
 
-	candidates := map[string]lhsMarkeredOccurences{}
+	candidates := namedOccurrenceMap(map[string]lhsMarkeredOccurences{})
 
 	for varName, occ := range occs {
 		for lhs, o := range occ {
-			if o.declarationPos != token.NoPos || isFoundByLhsMarker(occs, lhs) {
+			if o.declarationPos != token.NoPos || occs.isFoundByLhsMarker(lhs) {
 				if _, ok := candidates[varName]; !ok {
 					candidates[varName] = lhsMarkeredOccurences{
 						lhs: o,
@@ -61,7 +76,7 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]lhsMa
 	return candidates
 }
 
-func isFoundByLhsMarker(candidates map[string]lhsMarkeredOccurences, lhsMarker int64) bool {
+func (candidates namedOccurrenceMap) isFoundByLhsMarker(lhsMarker int64) bool {
 	var i int
 	for _, v := range candidates {
 		for lhs := range v {
@@ -182,7 +197,7 @@ func addOccurrenceFromIdent(occs map[string]lhsMarkeredOccurences, ifPos token.P
 	}
 
 	if oi, ok := occs[ident.Name]; ok {
-		lhs := getLatestLhs(occs[ident.Name])
+		lhs := occs[ident.Name].getLatestLhs()
 
 		o := oi[lhs]
 		if o.ifStmtPos != token.NoPos && o.declarationPos != token.NoPos {
@@ -192,14 +207,4 @@ func addOccurrenceFromIdent(occs map[string]lhsMarkeredOccurences, ifPos token.P
 		o.ifStmtPos = ifPos
 		occs[ident.Name][lhs] = o
 	}
-}
-
-func getLatestLhs(o lhsMarkeredOccurences) int64 {
-	var maxLhs int64
-	for lhs := range o {
-		if lhs > maxLhs {
-			maxLhs = lhs
-		}
-	}
-	return maxLhs
 }
