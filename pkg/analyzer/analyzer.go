@@ -144,15 +144,6 @@ func (nom namedOccurrenceMap) checkIf(candidate ast.Expr, ifPos token.Pos) {
 	}
 }
 
-func (lmo lhsMarkeredOccurences) isEmponymousKey(pos token.Pos) bool {
-	for _, o := range lmo {
-		if o.ifStmtPos == pos {
-			return true
-		}
-	}
-	return false
-}
-
 func (nom namedOccurrenceMap) check(candidate ast.Expr) {
 	switch v := candidate.(type) {
 	case *ast.CallExpr:
@@ -176,7 +167,7 @@ func (nom namedOccurrenceMap) check(candidate ast.Expr) {
 			}
 		}
 	case *ast.Ident:
-		lhsMarker1 := nom[v.Name].getLhsMarker(v.Pos())
+		lhsMarker1 := nom[v.Name].getLhsMarkerForPos(v.Pos())
 		occ := nom[v.Name][lhsMarker1]
 		if v.Pos() != occ.ifStmtPos && v.Pos() != occ.declarationPos {
 			delete(nom[v.Name], lhsMarker1)

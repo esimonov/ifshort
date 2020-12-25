@@ -14,14 +14,22 @@ type occurrence struct {
 	ifStmtPos      token.Pos
 }
 
-// lhsMarkeredOccurences is a map of left-hand side markers to occurrence.
+// lhsMarkeredOccurences is a map of left-hand side markers to occurrences.
 type lhsMarkeredOccurences map[int64]occurrence
 
-// namedOccurrenceMap is a map of variable names to lhsMarkeredOccurences.
-type namedOccurrenceMap map[string]lhsMarkeredOccurences
+func (lmo lhsMarkeredOccurences) getLatestLhsMarker() int64 {
+	var maxLhsMarker int64
+
+	for marker := range lmo {
+		if marker > maxLhsMarker {
+			maxLhsMarker = marker
+		}
+	}
+	return maxLhsMarker
+}
 
 // find lhs marker of the greatest token.Pos that is smaller than provided.
-func (lmo lhsMarkeredOccurences) getLhsMarker(pos token.Pos) int64 {
+func (lmo lhsMarkeredOccurences) getLhsMarkerForPos(pos token.Pos) int64 {
 	var m int64
 	var foundPos token.Pos
 
@@ -34,16 +42,17 @@ func (lmo lhsMarkeredOccurences) getLhsMarker(pos token.Pos) int64 {
 	return m
 }
 
-func (lmo lhsMarkeredOccurences) getLatestLhsMarker() int64 {
-	var maxLhsMarker int64
-
-	for marker := range lmo {
-		if marker > maxLhsMarker {
-			maxLhsMarker = marker
+func (lmo lhsMarkeredOccurences) isEmponymousKey(pos token.Pos) bool {
+	for _, occ := range lmo {
+		if occ.ifStmtPos == pos {
+			return true
 		}
 	}
-	return maxLhsMarker
+	return false
 }
+
+// namedOccurrenceMap is a map of variable names to lhsMarkeredOccurences.
+type namedOccurrenceMap map[string]lhsMarkeredOccurences
 
 func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurrenceMap {
 	nom := namedOccurrenceMap(map[string]lhsMarkeredOccurences{})
