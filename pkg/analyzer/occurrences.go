@@ -27,7 +27,35 @@ func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]map[i
 			addOccurrenceFromElseClause(v, occs)
 		}
 	}
-	return occs
+
+	candidates := map[string]map[int64]occurrenceInfo{}
+
+	for varName, occ := range occs {
+		for lhs, o := range occ {
+			if o.declarationPos != 0 || isFoundByLhsMarker(occs, lhs) {
+				if _, ok := candidates[varName]; !ok {
+					candidates[varName] = map[int64]occurrenceInfo{
+						lhs: o,
+					}
+				} else {
+					candidates[varName][lhs] = o
+				}
+			}
+		}
+	}
+	return candidates
+}
+
+func isFoundByLhsMarker(candidates map[string]map[int64]occurrenceInfo, lhsMarker int64) bool {
+	var i int
+	for _, v := range candidates {
+		for lhs := range v {
+			if lhs == lhsMarker {
+				i++
+			}
+		}
+	}
+	return i >= 2
 }
 
 func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt, occs map[string]map[int64]occurrenceInfo) {

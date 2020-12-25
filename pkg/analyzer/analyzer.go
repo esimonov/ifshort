@@ -29,14 +29,6 @@ var Analyzer = &analysis.Analyzer{
 	Requires: []*analysis.Analyzer{inspect.Analyzer},
 }
 
-/*
-https://medium.com/justforfunc/understanding-go-programs-with-go-parser-c4e88a6edb87
-
-https://astexplorer.net/
-
-https://disaev.me/p/writing-useful-go-analysis-linter/
-*/
-
 func run(pass *analysis.Pass) (interface{}, error) {
 	inspector := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	nodeFilter := []ast.Node{
@@ -50,22 +42,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			return
 		}*/
 
-		candidates := map[string]map[int64]occurrenceInfo{}
-		occurrences := getOccurrenceMap(fdecl, pass)
-
-		for varName, occ := range occurrences {
-			for lhs, o := range occ {
-				if o.declarationPos != 0 || isFoundByLhsMarker(occurrences, lhs) {
-					if _, ok := candidates[varName]; !ok {
-						candidates[varName] = map[int64]occurrenceInfo{
-							lhs: o,
-						}
-					} else {
-						candidates[varName][lhs] = o
-					}
-				}
-			}
-		}
+		candidates := getOccurrenceMap(fdecl, pass)
 
 		for _, stmt := range fdecl.Body.List {
 			switch v := stmt.(type) {
@@ -138,18 +115,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 	})
 	return nil, nil
-}
-
-func isFoundByLhsMarker(candidates map[string]map[int64]occurrenceInfo, lhsMarker int64) bool {
-	var i int
-	for _, v := range candidates {
-		for lhs := range v {
-			if lhs == lhsMarker {
-				i++
-			}
-		}
-	}
-	return i >= 2
 }
 
 func checkIfCandidate(candidates map[string]map[int64]occurrenceInfo, e ast.Expr, ifPos token.Pos) {
