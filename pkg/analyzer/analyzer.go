@@ -38,7 +38,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	inspector.Preorder(nodeFilter, func(node ast.Node) {
 		fdecl := node.(*ast.FuncDecl)
 
-		/*if fdecl.Name.Name != "notUsed_MultipleAssignments_WhenFlagSettingsAreNotSatisfied_OK" {
+		/*if fdecl.Name.Name != "notUsed_MultipleAssignments_AllUsesInIfs_OK" {
 			return
 		}*/
 
@@ -107,7 +107,12 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 
 		for varName := range candidates {
-			for _, occ := range candidates[varName] {
+			for marker, occ := range candidates[varName] {
+				//  If two or more vars with the same lhs marker - skip them.
+				if candidates.isFoundByLhsMarker(marker) {
+					continue
+				}
+
 				pass.Reportf(occ.declarationPos,
 					"variable '%s' is only used in the if-statement (%s); consider using short syntax",
 					varName, pass.Fset.Position(occ.ifStmtPos))
@@ -179,6 +184,8 @@ func (nom namedOccurrenceMap) check(candidate ast.Expr) {
 				}
 			}
 		}
+	case *ast.SelectorExpr:
+		nom.check(v.X)
 	case *ast.UnaryExpr:
 		nom.check(v.X)
 	}

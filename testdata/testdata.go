@@ -34,17 +34,6 @@ func notUsed_CondBinaryExpr_NotOK() {
 	}
 }
 
-func notUsed_Var2_CondBinaryExpr_NotOK() {
-	v := callWithVariadicArgsAndReturn(
-		nil,
-		nil,
-		nil,
-	)
-	if v != nil {
-		noOp1(v)
-	}
-}
-
 func notUsed_CondCallExpr_NotOK() {
 	err := errors.New("") // want "variable '.+' is only used in the if-statement"
 	if errors.Is(err, errors.New("")) {
@@ -100,7 +89,7 @@ func notUsed_IfStmt_CondBinaryExpr_OK() {
 }
 
 func notUsed_IfStmt_CondBinaryExpr_MethodCall_OK() {
-	dt := returnDummyType()
+	dt := returnDummy()
 	if v := dt.returnValue(); v == nil {
 		noOp1(v)
 	}
@@ -195,6 +184,17 @@ func notUsed_MultipleAssignments_OK() interface{} {
 	return b
 }
 
+func notUsed_MultipleAssignments_AllUsesInIfs_OK() interface{} {
+	a, b := returnTwoValues()
+	if a != nil {
+		return a
+	}
+	if b != nil {
+		return b
+	}
+	return nil
+}
+
 func notUsed_MultipleAssignments_WhenFlagSettingsAreNotSatisfied_OK() {
 	longDeclarationToDissatisfyFlagSettings, b := returnTwoValues()
 	if b != nil {
@@ -207,6 +207,17 @@ func notUsed_MultipleAssignments_WhenFlagSettingsAreNotSatisfied_OK() {
 
 func notUsed_LongDecl_OK() {
 	v := callWithVariadicArgsAndReturn("Long long long long long declaration, linter shouldn't force short syntax for it")
+	if v != nil {
+		noOp1(v)
+	}
+}
+
+func notUsed_HighDecl_OK() {
+	v := callWithVariadicArgsAndReturn(
+		nil,
+		nil,
+		nil,
+	)
 	if v != nil {
 		noOp1(v)
 	}
@@ -256,4 +267,17 @@ func notUsed_Range_OK() {
 	for _, dt := range dts {
 		dt.noOp()
 	}
+}
+
+func notUsed_AssignToField_OK() {
+	dt := dummyType{}
+	dt.v = returnValue()
+}
+
+func notUsed_ReferenceToFields_OK() {
+	a, b := returnTwoDummies()
+	if a.v != nil {
+		return
+	}
+	defer noOp1(b.v)
 }

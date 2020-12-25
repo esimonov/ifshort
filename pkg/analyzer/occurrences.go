@@ -72,7 +72,7 @@ func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurr
 
 	for varName, markeredOccs := range nom {
 		for marker, occ := range markeredOccs {
-			if occ.declarationPos != token.NoPos || nom.isFoundByLhsMarker(marker) {
+			if (occ.ifStmtPos != token.NoPos && occ.declarationPos != token.NoPos) || nom.isFoundByLhsMarker(marker) {
 				if _, ok := candidates[varName]; !ok {
 					candidates[varName] = lhsMarkeredOccurences{
 						marker: occ,

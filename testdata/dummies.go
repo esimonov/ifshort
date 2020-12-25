@@ -14,7 +14,9 @@ func callWithVariadicArgsAndReturn(...interface{}) interface{} { return nil }
 
 type dummyType struct{ v interface{} }
 
-func returnDummyType() dummyType { return dummyType{} }
+func returnDummy() dummyType { return dummyType{} }
+
+func returnTwoDummies() (dummyType, dummyType) { return dummyType{}, dummyType{} }
 
 func (dt dummyType) noOp() {}
 
