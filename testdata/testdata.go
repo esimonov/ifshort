@@ -282,7 +282,7 @@ func notUsed_ReferenceToFields_OK() {
 	defer noOp1(b.v)
 }
 
-func notUsed_IndexStatement_OK() {
+func notUsed_IndexExpression_Index_OK() {
 	s := []int{}
 
 	length := len(s)
@@ -292,4 +292,14 @@ func notUsed_IndexStatement_OK() {
 
 	last := s[length-1]
 	noOp1(last)
+}
+
+func notUsed_IndexExpression_Indexed_OK() {
+	s := []int{}
+	if s == nil {
+		return
+	}
+
+	first := s[0]
+	noOp1(first)
 }
