@@ -119,19 +119,21 @@ func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment 
 			continue
 		}
 
-		if ident.Name != "_" && ident.Obj != nil {
-			if markeredOccs, ok := nom[ident.Name]; ok {
-				markeredOccs[scopeMarker] = occurrence{
-					declarationPos: ident.Pos(),
-				}
-				nom[ident.Name] = markeredOccs
-			} else {
-				newOcc := occurrence{}
-				if areFlagSettingsSatisfied(pass, assignment, i) {
-					newOcc.declarationPos = ident.Pos()
-				}
-				nom[ident.Name] = scopeMarkeredOccurences{scopeMarker: newOcc}
+		if ident.Name == "_" || ident.Obj == nil {
+			continue
+		}
+
+		if markeredOccs, ok := nom[ident.Name]; ok {
+			markeredOccs[scopeMarker] = occurrence{
+				declarationPos: ident.Pos(),
 			}
+			nom[ident.Name] = markeredOccs
+		} else {
+			newOcc := occurrence{}
+			if areFlagSettingsSatisfied(pass, assignment, i) {
+				newOcc.declarationPos = ident.Pos()
+			}
+			nom[ident.Name] = scopeMarkeredOccurences{scopeMarker: newOcc}
 		}
 	}
 }

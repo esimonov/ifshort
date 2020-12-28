@@ -190,11 +190,6 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 		}
 
 		scopeMarker1 := nom[v.Name].getScopeMarkerForPosition(v.Pos())
-		occ := nom[v.Name][scopeMarker1]
-
-		if v.Pos() == occ.ifStmtPos || v.Pos() == occ.declarationPos {
-			return
-		}
 
 		delete(nom[v.Name], scopeMarker1)
 		for k := range nom {
