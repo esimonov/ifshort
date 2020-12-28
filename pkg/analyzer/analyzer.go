@@ -78,6 +78,19 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 		if callExpr, ok := v.X.(*ast.CallExpr); ok {
 			nom.checkExpression(callExpr, ifPos)
 		}
+	case *ast.ForStmt:
+		for _, el := range v.Body.List {
+			nom.checkStatement(el, ifPos)
+		}
+		if bexpr, ok := v.Cond.(*ast.BinaryExpr); ok {
+			nom.checkExpression(bexpr.X, ifPos)
+			nom.checkExpression(bexpr.Y, ifPos)
+		}
+		nom.checkStatement(v.Post, ifPos)
+	case *ast.GoStmt:
+		for _, a := range v.Call.Args {
+			nom.checkExpression(a, token.NoPos)
+		}
 	case *ast.IfStmt:
 		for _, el := range v.Body.List {
 			nom.checkStatement(el, v.If)
@@ -94,21 +107,9 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 				nom.checkExpression(e, v.If)
 			}
 		}
-	case *ast.ForStmt:
-		for _, el := range v.Body.List {
-			nom.checkStatement(el, ifPos)
-		}
-		if bexpr, ok := v.Cond.(*ast.BinaryExpr); ok {
-			nom.checkExpression(bexpr.X, ifPos)
-			nom.checkExpression(bexpr.Y, ifPos)
-		}
-		nom.checkStatement(v.Post, ifPos)
 	case *ast.IncDecStmt:
 		nom.checkExpression(v.X, ifPos)
-	case *ast.GoStmt:
-		for _, a := range v.Call.Args {
-			nom.checkExpression(a, token.NoPos)
-		}
+
 	case *ast.RangeStmt:
 		nom.checkExpression(v.X, token.NoPos)
 	case *ast.ReturnStmt:
@@ -163,6 +164,10 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 			if ident, ok := kv.Value.(*ast.Ident); ok {
 				nom.checkExpression(ident, ifPos)
 			}
+		}
+	case *ast.FuncLit:
+		for _, el := range v.Body.List {
+			nom.checkStatement(el, ifPos)
 		}
 	case *ast.Ident:
 		if nom[v.Name].isEmponymousKey(ifPos) {

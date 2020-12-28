@@ -369,12 +369,15 @@ func notUsed_IndexExpression_Indexed_OK() {
 }
 
 func notUsed_BinaryExpressionInIndex_OK() {
-	s := []int{}
 	size := 0
-	if size != 0 {
+
+	if size == 0 {
 		return
 	}
-	noOp1(s[size-1:])
+
+	buf := make([]byte, size-1)
+
+	noOp1(buf)
 }
 
 func notUsed_SliceExpression_Low_OK() {
@@ -393,4 +396,15 @@ func notUsed_SliceExpression_High_OK() {
 		return
 	}
 	noOp1(s[:size])
+}
+
+func notUsed_FuncLitReturn_OK() {
+	s := ""
+	tp := func() string { return s }
+
+	tp()
+
+	if s != "" {
+		return
+	}
 }
