@@ -14,26 +14,30 @@ type occurrence struct {
 	ifStmtPos      token.Pos
 }
 
-// lhsMarkeredOccurences is a map of left-hand side markers to occurrences.
-type lhsMarkeredOccurences map[int64]occurrence
-
-func (lmo lhsMarkeredOccurences) getLatestLhsMarker() int64 {
-	var maxLhsMarker int64
-
-	for marker := range lmo {
-		if marker > maxLhsMarker {
-			maxLhsMarker = marker
-		}
-	}
-	return maxLhsMarker
+func (occ *occurrence) isComplete() bool {
+	return occ.ifStmtPos != token.NoPos && occ.declarationPos != token.NoPos
 }
 
-// find lhs marker of the greatest token.Pos that is smaller than provided.
-func (lmo lhsMarkeredOccurences) getLhsMarkerForPos(pos token.Pos) int64 {
+// scopeMarkeredOccurences is a map of scope markers to variable occurrences.
+type scopeMarkeredOccurences map[int64]occurrence
+
+func (smo scopeMarkeredOccurences) getGreatestMarker() int64 {
+	var maxScopeMarker int64
+
+	for marker := range smo {
+		if marker > maxScopeMarker {
+			maxScopeMarker = marker
+		}
+	}
+	return maxScopeMarker
+}
+
+// find scope marker of the greatest token.Pos that is smaller than provided.
+func (smo scopeMarkeredOccurences) getScopeMarkerForPosition(pos token.Pos) int64 {
 	var m int64
 	var foundPos token.Pos
 
-	for marker, occ := range lmo {
+	for marker, occ := range smo {
 		if occ.declarationPos < pos && occ.declarationPos >= foundPos {
 			m = marker
 			foundPos = occ.declarationPos
@@ -42,11 +46,11 @@ func (lmo lhsMarkeredOccurences) getLhsMarkerForPos(pos token.Pos) int64 {
 	return m
 }
 
-func (lmo lhsMarkeredOccurences) isEmponymousKey(pos token.Pos) bool {
+func (smo scopeMarkeredOccurences) isEmponymousKey(pos token.Pos) bool {
 	if pos == token.NoPos {
 		return false
 	}
-	for _, occ := range lmo {
+	for _, occ := range smo {
 		if occ.ifStmtPos == pos {
 			return true
 		}
@@ -54,11 +58,11 @@ func (lmo lhsMarkeredOccurences) isEmponymousKey(pos token.Pos) bool {
 	return false
 }
 
-// namedOccurrenceMap is a map of variable names to lhsMarkeredOccurences.
-type namedOccurrenceMap map[string]lhsMarkeredOccurences
+// namedOccurrenceMap is a map of variable names to scopeMarkeredOccurences.
+type namedOccurrenceMap map[string]scopeMarkeredOccurences
 
 func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurrenceMap {
-	nom := namedOccurrenceMap(map[string]lhsMarkeredOccurences{})
+	nom := namedOccurrenceMap(map[string]scopeMarkeredOccurences{})
 
 	for _, stmt := range fdecl.Body.List {
 		switch v := stmt.(type) {
@@ -71,29 +75,30 @@ func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurr
 		}
 	}
 
-	candidates := namedOccurrenceMap(map[string]lhsMarkeredOccurences{})
+	candidates := namedOccurrenceMap(map[string]scopeMarkeredOccurences{})
 
 	for varName, markeredOccs := range nom {
 		for marker, occ := range markeredOccs {
-			if (occ.ifStmtPos != token.NoPos && occ.declarationPos != token.NoPos) || nom.isFoundByLhsMarker(marker) {
-				if _, ok := candidates[varName]; !ok {
-					candidates[varName] = lhsMarkeredOccurences{
-						marker: occ,
-					}
-				} else {
-					candidates[varName][marker] = occ
+			if !occ.isComplete() && !nom.isFoundByScopeMarker(marker) {
+				continue
+			}
+			if _, ok := candidates[varName]; !ok {
+				candidates[varName] = scopeMarkeredOccurences{
+					marker: occ,
 				}
+			} else {
+				candidates[varName][marker] = occ
 			}
 		}
 	}
 	return candidates
 }
 
-func (nom namedOccurrenceMap) isFoundByLhsMarker(lhsMarker int64) bool {
+func (nom namedOccurrenceMap) isFoundByScopeMarker(scopeMarker int64) bool {
 	var i int
 	for _, markeredOccs := range nom {
 		for marker := range markeredOccs {
-			if marker == lhsMarker {
+			if marker == scopeMarker {
 				i++
 			}
 		}
@@ -106,7 +111,7 @@ func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment 
 		return
 	}
 
-	lhsMarker := time.Now().UnixNano()
+	scopeMarker := time.Now().UnixNano()
 
 	for i, el := range assignment.Lhs {
 		ident, ok := el.(*ast.Ident)
@@ -116,7 +121,7 @@ func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment 
 
 		if ident.Name != "_" && ident.Obj != nil {
 			if markeredOccs, ok := nom[ident.Name]; ok {
-				markeredOccs[lhsMarker] = occurrence{
+				markeredOccs[scopeMarker] = occurrence{
 					declarationPos: ident.Pos(),
 				}
 				nom[ident.Name] = markeredOccs
@@ -125,7 +130,7 @@ func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment 
 				if areFlagSettingsSatisfied(pass, assignment, i) {
 					newOcc.declarationPos = ident.Pos()
 				}
-				nom[ident.Name] = lhsMarkeredOccurences{lhsMarker: newOcc}
+				nom[ident.Name] = scopeMarkeredOccurences{scopeMarker: newOcc}
 			}
 		}
 	}
@@ -210,7 +215,7 @@ func (nom namedOccurrenceMap) addFromIdent(ifPos token.Pos, v ast.Expr) {
 	}
 
 	if markeredOccs, ok := nom[ident.Name]; ok {
-		marker := nom[ident.Name].getLatestLhsMarker()
+		marker := nom[ident.Name].getGreatestMarker()
 
 		occ := markeredOccs[marker]
 		if occ.ifStmtPos != token.NoPos && occ.declarationPos != token.NoPos {

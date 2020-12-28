@@ -219,13 +219,14 @@ func notUsed_SwitchStmt_Body_Assignment_OK() {
 }
 
 func notUsed_CompositeLiteral_OK() map[int]struct{} {
-	size := 0
-
-	if size != 0 {
+	a := 0
+	if a != 0 {
 		return nil
 	}
 
-	return map[int]struct{}{size: struct{}{}}
+	b := struct{}{}
+
+	return map[int]struct{}{a: b}
 }
 
 func notUsed_MultipleAssignments_OK() interface{} {
@@ -358,13 +359,10 @@ func notUsed_ForPost_OK() {
 
 func notUsed_IncrementDecrement_OK() {
 	i := 0
-
 	i++
-
 	if i == 0 {
 		return
 	}
-
 	i--
 }
 

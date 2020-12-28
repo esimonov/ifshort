@@ -50,8 +50,8 @@ func run(pass *analysis.Pass) (interface{}, error) {
 
 		for varName := range candidates {
 			for marker, occ := range candidates[varName] {
-				//  If two or more vars with the same lhs marker - skip them.
-				if candidates.isFoundByLhsMarker(marker) {
+				//  If two or more vars with the same scope marker - skip them.
+				if candidates.isFoundByScopeMarker(marker) {
 					continue
 				}
 
@@ -189,18 +189,18 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 			return
 		}
 
-		lhsMarker1 := nom[v.Name].getLhsMarkerForPos(v.Pos())
-		occ := nom[v.Name][lhsMarker1]
+		scopeMarker1 := nom[v.Name].getScopeMarkerForPosition(v.Pos())
+		occ := nom[v.Name][scopeMarker1]
 
 		if v.Pos() == occ.ifStmtPos || v.Pos() == occ.declarationPos {
 			return
 		}
 
-		delete(nom[v.Name], lhsMarker1)
+		delete(nom[v.Name], scopeMarker1)
 		for k := range nom {
-			for lhsMarker2 := range nom[k] {
-				if lhsMarker1 == lhsMarker2 {
-					delete(nom[k], lhsMarker2)
+			for scopeMarker2 := range nom[k] {
+				if scopeMarker1 == scopeMarker2 {
+					delete(nom[k], scopeMarker2)
 				}
 			}
 		}
