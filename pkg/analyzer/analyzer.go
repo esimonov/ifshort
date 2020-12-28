@@ -91,6 +91,8 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt) {
 				nom.checkIf(e, v.If)
 			}
 		}
+	case *ast.IncDecStmt:
+		nom.check(v.X)
 	case *ast.ForStmt:
 		for _, el := range v.Body.List {
 			nom.checkStatement(el)

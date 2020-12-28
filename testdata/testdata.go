@@ -282,6 +282,23 @@ func notUsed_For_OK() {
 	}
 }
 
+func notUsed_IncrementDecrement_OK() {
+	i := 0
+	for {
+		i++
+		break
+	}
+
+	if i == 0 {
+		return
+	}
+
+	for {
+		i--
+		break
+	}
+}
+
 func notUsed_AssignToField_OK() {
 	dt := dummyType{}
 	dt.v = returnValue()
