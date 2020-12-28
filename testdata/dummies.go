@@ -4,13 +4,11 @@ func noOp1(interface{}) {}
 
 func noOp2(interface{}) {}
 
-func returnValue() interface{} { return nil }
+func getValue(...interface{}) interface{} { return nil }
 
-func returnTwoValues() (interface{}, interface{}) { return nil, nil }
+func getTwoValues(...interface{}) (interface{}, interface{}) { return nil, nil }
 
-func callWithOneArgAndReturnValue(interface{}) interface{} { return nil }
-
-func callWithVariadicArgsAndReturnValue(...interface{}) interface{} { return nil }
+func getBool(...interface{}) bool { return false }
 
 type dummyType struct{ v interface{} }
 
@@ -20,4 +18,4 @@ func returnTwoDummies() (dummyType, dummyType) { return dummyType{}, dummyType{}
 
 func (dt dummyType) noOp() {}
 
-func (dt dummyType) returnValue() interface{} { return nil }
+func (dt dummyType) getValue() interface{} { return nil }

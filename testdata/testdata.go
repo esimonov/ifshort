@@ -1,24 +1,22 @@
 package testdata
 
-import "errors"
-
 // Cases where short syntax SHOULD be used AND IS used.
 
 func used_CondBinary_UsedInBody_OK() {
-	if v := returnValue(); v != nil {
+	if v := getValue(); v != nil {
 		noOp1(v)
 	}
 }
 
 func used_CondBinary_UsedInElse_OK() {
-	if v := returnValue(); v != nil {
+	if v := getValue(); v != nil {
 	} else {
 		noOp2(v)
 	}
 }
 
 func used_CondBinary_UsedInBodyAndElse_OK() {
-	if v := returnValue(); v != nil {
+	if v := getValue(); v != nil {
 		noOp1(v)
 	} else {
 		noOp2(v)
@@ -28,27 +26,31 @@ func used_CondBinary_UsedInBodyAndElse_OK() {
 // Cases where short syntax SHOULD be used BUT is NOT used.
 
 func notUsed_CondBinaryExpr_NotOK() {
-	v := returnValue() // want "variable '.+' is only used in the if-statement"
+	v := getValue() // want "variable '.+' is only used in the if-statement"
 	if v != nil {
 		noOp1(v)
 	}
 }
 
 func notUsed_CondCallExpr_NotOK() {
-	err := errors.New("") // want "variable '.+' is only used in the if-statement"
-	if errors.Is(err, errors.New("")) {
+	a := getValue() // want "variable '.+' is only used in the if-statement"
+	if getBool(a) {
+	}
+
+	b := getValue() // want "variable '.+' is only used in the if-statement"
+	if getBool(getValue(b)) {
 	}
 }
 
 func notUsed_Body_NotOK() {
-	v := returnValue() // want "variable '.+' is only used in the if-statement"
+	v := getValue() // want "variable '.+' is only used in the if-statement"
 	if true {
 		noOp1(v)
 	}
 }
 
 func notUsed_Else_NotOK() {
-	v := returnValue() // want "variable '.+' is only used in the if-statement"
+	v := getValue() // want "variable '.+' is only used in the if-statement"
 	if true {
 	} else {
 		noOp2(v)
@@ -56,12 +58,12 @@ func notUsed_Else_NotOK() {
 }
 
 func notUsed_DifferentVarsWithSameName_NotOK() {
-	_, b := returnTwoValues() // want "variable '.+' is only used in the if-statement"
+	_, b := getTwoValues() // want "variable '.+' is only used in the if-statement"
 	if b != nil {
 		noOp1(b)
 	}
 
-	a, b := returnTwoValues()
+	a, b := getTwoValues()
 	if b != nil {
 		noOp1(a)
 	}
@@ -71,7 +73,7 @@ func notUsed_DifferentVarsWithSameName_NotOK() {
 // Cases where short syntax SHOULD NOT be used AND IS NOT used.
 
 func notUsed_DeferStmt_OK() {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
@@ -79,7 +81,7 @@ func notUsed_DeferStmt_OK() {
 }
 
 func notUsed_IfStmt_CondBinaryExpr_OK() {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
@@ -90,7 +92,7 @@ func notUsed_IfStmt_CondBinaryExpr_OK() {
 
 func notUsed_IfStmt_CondBinaryExpr_MethodCall_OK() {
 	dt := returnDummy()
-	if v := dt.returnValue(); v == nil {
+	if v := dt.getValue(); v == nil {
 		noOp1(v)
 	}
 	if dt.v != nil {
@@ -99,11 +101,11 @@ func notUsed_IfStmt_CondBinaryExpr_MethodCall_OK() {
 }
 
 func notUsed_IfStmt_CondCallExpr_OK() {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
-	if callWithOneArgAndReturnValue(v) != nil {
+	if getValue(v) != nil {
 		noOp2(v)
 	}
 }
@@ -138,7 +140,7 @@ func notUsed_IfStmt_AssignInLeftHandSide_OK() {
 }
 
 func notUsed_GoStmt_OK() {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
@@ -146,7 +148,7 @@ func notUsed_GoStmt_OK() {
 }
 
 func notUsed_ReturnStmt_OK() interface{} {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
@@ -154,7 +156,7 @@ func notUsed_ReturnStmt_OK() interface{} {
 }
 
 func notUsed_SendStmt_OK() {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
@@ -164,7 +166,7 @@ func notUsed_SendStmt_OK() {
 }
 
 func notUsed_SwitchStmt_Tag_OK() {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
@@ -174,7 +176,7 @@ func notUsed_SwitchStmt_Tag_OK() {
 }
 
 func notUsed_SwitchStmt_CaseList_OK() {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
@@ -184,7 +186,7 @@ func notUsed_SwitchStmt_CaseList_OK() {
 }
 
 func notUsed_SwitchStmt_CaseBody_OK() {
-	v := returnValue()
+	v := getValue()
 	if v != nil {
 		noOp1(v)
 	}
@@ -195,11 +197,11 @@ func notUsed_SwitchStmt_CaseBody_OK() {
 }
 
 func notUsed_SwitchStmt_Body_OK() {
-	a := returnValue()
+	a := getValue()
 	if a != nil {
 		noOp1(a)
 	}
-	b := returnValue()
+	b := getValue()
 	switch b {
 	case a:
 	}
@@ -230,7 +232,7 @@ func notUsed_CompositeLiteral_OK() map[int]struct{} {
 }
 
 func notUsed_MultipleAssignments_OK() interface{} {
-	a, b := returnTwoValues()
+	a, b := getTwoValues()
 	if a != nil {
 		return a
 	}
@@ -238,7 +240,7 @@ func notUsed_MultipleAssignments_OK() interface{} {
 }
 
 func notUsed_MultipleAssignments_AllUsesInIfs_OK() interface{} {
-	a, b := returnTwoValues()
+	a, b := getTwoValues()
 	if a != nil {
 		return a
 	}
@@ -249,24 +251,24 @@ func notUsed_MultipleAssignments_AllUsesInIfs_OK() interface{} {
 }
 
 func notUsed_MultipleAssignments_WhenFlagSettingsAreNotSatisfied_OK() {
-	longDeclarationToDissatisfyFlagSettings, b := returnTwoValues()
+	longDeclarationToDissatisfyFlagSettings, b := getTwoValues()
 	if b != nil {
 		return
 	}
 
-	c := callWithOneArgAndReturnValue(longDeclarationToDissatisfyFlagSettings)
+	c := getValue(longDeclarationToDissatisfyFlagSettings)
 	noOp1(c)
 }
 
 func notUsed_LongDecl_OK() {
-	v := callWithVariadicArgsAndReturnValue("Long long long long long declaration, linter shouldn't force short syntax for it")
+	v := getValue("Long long long long long declaration, linter shouldn't force short syntax for it, at least I hope so.")
 	if v != nil {
 		noOp1(v)
 	}
 }
 
 func notUsed_HighDecl_OK() {
-	v := callWithVariadicArgsAndReturnValue(
+	v := getValue(
 		nil,
 		nil,
 		nil,
@@ -288,7 +290,7 @@ func notUsed_MethodCallWithAssignment_OK() {
 	if dt.v != nil {
 	}
 
-	v := dt.returnValue()
+	v := dt.getValue()
 	noOp1(v)
 }
 
@@ -296,7 +298,7 @@ func notUsed_MethodCall_Nested_OK() {
 	dt := dummyType{}
 	if dt.v != nil {
 	}
-	noOp1(dt.returnValue())
+	noOp1(dt.getValue())
 }
 
 func notUsed_Pointer_OK() {
@@ -308,7 +310,7 @@ func notUsed_Pointer_OK() {
 
 func notUsed_CondMethodCall_OK() {
 	dt := dummyType{}
-	if dt.returnValue() == nil {
+	if dt.getValue() == nil {
 	}
 }
 
@@ -368,7 +370,7 @@ func notUsed_IncrementDecrement_OK() {
 
 func notUsed_AssignToField_OK() {
 	dt := dummyType{}
-	dt.v = returnValue()
+	dt.v = getValue()
 }
 
 func notUsed_ReferenceToFields_OK() {
