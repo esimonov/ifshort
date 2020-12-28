@@ -65,6 +65,10 @@ type namedOccurrenceMap map[string]scopeMarkeredOccurences
 func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurrenceMap {
 	nom := namedOccurrenceMap(map[string]scopeMarkeredOccurences{})
 
+	if fdecl == nil || fdecl.Body == nil {
+		return nom
+	}
+
 	for _, stmt := range fdecl.Body.List {
 		switch v := stmt.(type) {
 		case *ast.AssignStmt:
