@@ -97,6 +97,11 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt) {
 		for _, el := range v.Body.List {
 			nom.checkStatement(el)
 		}
+		if bexpr, ok := v.Cond.(*ast.BinaryExpr); ok {
+			nom.check(bexpr.X)
+			nom.check(bexpr.Y)
+		}
+		nom.checkStatement(v.Post)
 	case *ast.GoStmt:
 		for _, a := range v.Call.Args {
 			nom.check(a)

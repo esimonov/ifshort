@@ -269,7 +269,7 @@ func notUsed_Range_OK() {
 	}
 }
 
-func notUsed_For_OK() {
+func notUsed_ForBody_OK() {
 	s := ""
 
 	dt := returnDummy()
@@ -279,6 +279,28 @@ func notUsed_For_OK() {
 
 	for i := 0; i < len(s); i++ {
 		noOp1(dt.v)
+	}
+}
+
+func notUsed_ForCond_OK() {
+	i := 0
+	for i < 0 {
+		break
+	}
+
+	if i == 0 {
+		return
+	}
+}
+
+func notUsed_ForPost_OK() {
+	i := 0
+	for ; ; i++ {
+		break
+	}
+
+	if i == 0 {
+		return
 	}
 }
 
