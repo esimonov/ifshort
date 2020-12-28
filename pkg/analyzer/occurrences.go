@@ -43,6 +43,9 @@ func (lmo lhsMarkeredOccurences) getLhsMarkerForPos(pos token.Pos) int64 {
 }
 
 func (lmo lhsMarkeredOccurences) isEmponymousKey(pos token.Pos) bool {
+	if pos == token.NoPos {
+		return false
+	}
 	for _, occ := range lmo {
 		if occ.ifStmtPos == pos {
 			return true

@@ -45,7 +45,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		candidates := getNamedOccurrenceMap(fdecl, pass)
 
 		for _, stmt := range fdecl.Body.List {
-			candidates.checkStatement(stmt)
+			candidates.checkStatement(stmt, token.NoPos)
 		}
 
 		for varName := range candidates {
@@ -64,72 +64,75 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt) {
+func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 	switch v := stmt.(type) {
 	case *ast.AssignStmt:
 		for _, el := range v.Rhs {
-			nom.check(el)
+			nom.check(el, ifPos)
 		}
 	case *ast.DeferStmt:
 		for _, a := range v.Call.Args {
-			nom.check(a)
+			nom.check(a, ifPos)
 		}
 	case *ast.ExprStmt:
 		if callExpr, ok := v.X.(*ast.CallExpr); ok {
-			nom.check(callExpr)
+			nom.check(callExpr, ifPos)
 		}
 	case *ast.IfStmt:
+		for _, el := range v.Body.List {
+			nom.checkStatement(el, v.If)
+		}
 		switch cond := v.Cond.(type) {
 		case *ast.BinaryExpr:
-			nom.checkIf(cond.X, v.If)
-			nom.checkIf(cond.Y, v.If)
+			nom.check(cond.X, v.If)
+			nom.check(cond.Y, v.If)
 		case *ast.CallExpr:
-			nom.checkIf(cond, v.If)
+			nom.check(cond, v.If)
 		}
 		if init, ok := v.Init.(*ast.AssignStmt); ok {
 			for _, e := range init.Rhs {
-				nom.checkIf(e, v.If)
+				nom.check(e, v.If)
 			}
 		}
 	case *ast.IncDecStmt:
-		nom.check(v.X)
+		nom.check(v.X, ifPos)
 	case *ast.ForStmt:
 		for _, el := range v.Body.List {
-			nom.checkStatement(el)
+			nom.checkStatement(el, ifPos)
 		}
 		if bexpr, ok := v.Cond.(*ast.BinaryExpr); ok {
-			nom.check(bexpr.X)
-			nom.check(bexpr.Y)
+			nom.check(bexpr.X, ifPos)
+			nom.check(bexpr.Y, ifPos)
 		}
-		nom.checkStatement(v.Post)
+		nom.checkStatement(v.Post, ifPos)
 	case *ast.GoStmt:
 		for _, a := range v.Call.Args {
-			nom.check(a)
+			nom.check(a, token.NoPos)
 		}
 	case *ast.RangeStmt:
-		nom.check(v.X)
+		nom.check(v.X, token.NoPos)
 	case *ast.ReturnStmt:
 		for _, r := range v.Results {
-			nom.check(r)
+			nom.check(r, token.NoPos)
 		}
 	case *ast.SendStmt:
-		nom.check(v.Value)
+		nom.check(v.Value, token.NoPos)
 	case *ast.SwitchStmt:
-		nom.check(v.Tag)
+		nom.check(v.Tag, token.NoPos)
 		for _, el := range v.Body.List {
 			if clauses, ok := el.(*ast.CaseClause); ok {
 				for _, c := range clauses.List {
 					switch v := c.(type) {
 					case *ast.BinaryExpr:
-						nom.check(v.X)
-						nom.check(v.Y)
+						nom.check(v.X, token.NoPos)
+						nom.check(v.Y, token.NoPos)
 					case *ast.Ident:
-						nom.check(v)
+						nom.check(v, token.NoPos)
 					}
 				}
 				for _, c := range clauses.Body {
 					if est, ok := c.(*ast.ExprStmt); ok {
-						nom.check(est.X)
+						nom.check(est.X, token.NoPos)
 					}
 				}
 			}
@@ -137,41 +140,14 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt) {
 	}
 }
 
-func (nom namedOccurrenceMap) checkIf(candidate ast.Expr, ifPos token.Pos) {
+func (nom namedOccurrenceMap) check(candidate ast.Expr, ifPos token.Pos) {
 	switch v := candidate.(type) {
 	case *ast.CallExpr:
 		for _, arg := range v.Args {
-			nom.checkIf(arg, ifPos)
+			nom.check(arg, ifPos)
 		}
 		if fun, ok := v.Fun.(*ast.SelectorExpr); ok {
-			nom.checkIf(fun.X, ifPos)
-		}
-	case *ast.Ident:
-		for lhsMarker1 := range nom[v.Name] {
-			if !nom[v.Name].isEmponymousKey(ifPos) {
-				delete(nom[v.Name], lhsMarker1)
-				for k, v := range nom {
-					for lhsMarker2 := range v {
-						if lhsMarker1 == lhsMarker2 {
-							delete(nom, k)
-						}
-					}
-				}
-			}
-		}
-	case *ast.UnaryExpr:
-		nom.checkIf(v.X, ifPos)
-	}
-}
-
-func (nom namedOccurrenceMap) check(candidate ast.Expr) {
-	switch v := candidate.(type) {
-	case *ast.CallExpr:
-		for _, arg := range v.Args {
-			nom.check(arg)
-		}
-		if fun, ok := v.Fun.(*ast.SelectorExpr); ok {
-			nom.check(fun.X)
+			nom.check(fun.X, ifPos)
 		}
 	case *ast.CompositeLit:
 		for _, el := range v.Elts {
@@ -180,35 +156,42 @@ func (nom namedOccurrenceMap) check(candidate ast.Expr) {
 				continue
 			}
 			if ident, ok := kv.Key.(*ast.Ident); ok {
-				nom.check(ident)
+				nom.check(ident, ifPos)
 			}
 			if ident, ok := kv.Value.(*ast.Ident); ok {
-				nom.check(ident)
+				nom.check(ident, ifPos)
 			}
 		}
 	case *ast.Ident:
+		if nom[v.Name].isEmponymousKey(ifPos) {
+			return
+		}
+
 		lhsMarker1 := nom[v.Name].getLhsMarkerForPos(v.Pos())
 		occ := nom[v.Name][lhsMarker1]
-		if v.Pos() != occ.ifStmtPos && v.Pos() != occ.declarationPos {
-			delete(nom[v.Name], lhsMarker1)
-			for k := range nom {
-				for lhsMarker2 := range nom[k] {
-					if lhsMarker1 == lhsMarker2 {
-						delete(nom[k], lhsMarker2)
-					}
+
+		if v.Pos() == occ.ifStmtPos || v.Pos() == occ.declarationPos {
+			return
+		}
+
+		delete(nom[v.Name], lhsMarker1)
+		for k := range nom {
+			for lhsMarker2 := range nom[k] {
+				if lhsMarker1 == lhsMarker2 {
+					delete(nom[k], lhsMarker2)
 				}
 			}
 		}
 	case *ast.IndexExpr:
-		nom.check(v.X)
+		nom.check(v.X, ifPos)
 		index, ok := v.Index.(*ast.BinaryExpr)
 		if !ok {
 			return
 		}
-		nom.check(index.X)
+		nom.check(index.X, ifPos)
 	case *ast.SelectorExpr:
-		nom.check(v.X)
+		nom.check(v.X, ifPos)
 	case *ast.UnaryExpr:
-		nom.check(v.X)
+		nom.check(v.X, ifPos)
 	}
 }

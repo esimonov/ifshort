@@ -108,6 +108,23 @@ func notUsed_IfStmt_CondCallExpr_OK() {
 	}
 }
 
+func notUsed_IfStmt_Body_OK(scale int) {
+	pos := 0
+	if pos <= 0 {
+		noOp1(pos)
+	} else if pos > 0 {
+		noOp2(pos)
+	}
+	if scale > 0 {
+		noOp1(pos)
+		for pos < 0 {
+			noOp2(pos)
+			pos++
+		}
+		noOp1(pos)
+	}
+}
+
 func notUsed_GoStmt_OK() {
 	v := returnValue()
 	if v != nil {
