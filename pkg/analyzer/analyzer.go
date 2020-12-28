@@ -12,7 +12,8 @@ import (
 var maxDeclChars, maxDeclLines int
 
 const (
-	maxDeclLinesUsage = `maximum length of variable declaration measured in number of lines, after which the linter won't suggest using short syntax. Has precedence over max-decl-chars.`
+	maxDeclLinesUsage = `maximum length of variable declaration measured in number of lines, after which the linter won't suggest using short syntax.
+Has precedence over max-decl-chars.`
 	maxDeclCharsUsage = `maximum length of variable declaration measured in number of characters, after which the linter won't suggest using short syntax.`
 )
 
@@ -87,10 +88,12 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 		for _, el := range v.Body.List {
 			nom.checkStatement(el, ifPos)
 		}
+
 		if bexpr, ok := v.Cond.(*ast.BinaryExpr); ok {
 			nom.checkExpression(bexpr.X, ifPos)
 			nom.checkExpression(bexpr.Y, ifPos)
 		}
+
 		nom.checkStatement(v.Post, ifPos)
 	case *ast.GoStmt:
 		for _, a := range v.Call.Args {
@@ -100,6 +103,7 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 		for _, el := range v.Body.List {
 			nom.checkStatement(el, v.If)
 		}
+
 		switch cond := v.Cond.(type) {
 		case *ast.BinaryExpr:
 			nom.checkExpression(cond.X, v.If)
@@ -107,6 +111,7 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 		case *ast.CallExpr:
 			nom.checkExpression(cond, v.If)
 		}
+
 		if init, ok := v.Init.(*ast.AssignStmt); ok {
 			for _, e := range init.Rhs {
 				nom.checkExpression(e, v.If)
@@ -125,11 +130,13 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 		nom.checkExpression(v.Value, token.NoPos)
 	case *ast.SwitchStmt:
 		nom.checkExpression(v.Tag, token.NoPos)
+
 		for _, el := range v.Body.List {
 			clauses, ok := el.(*ast.CaseClause)
 			if !ok {
 				continue
 			}
+
 			for _, c := range clauses.List {
 				switch v := c.(type) {
 				case *ast.BinaryExpr:
@@ -139,10 +146,12 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 					nom.checkExpression(v, token.NoPos)
 				}
 			}
+
 			for _, c := range clauses.Body {
 				if est, ok := c.(*ast.ExprStmt); ok {
 					nom.checkExpression(est.X, token.NoPos)
 				}
+
 				switch v := c.(type) {
 				case *ast.AssignStmt:
 					for _, el := range v.Rhs {
@@ -192,6 +201,7 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 		scopeMarker1 := nom[v.Name].getScopeMarkerForPosition(v.Pos())
 
 		delete(nom[v.Name], scopeMarker1)
+
 		for k := range nom {
 			for scopeMarker2 := range nom[k] {
 				if scopeMarker1 == scopeMarker2 {

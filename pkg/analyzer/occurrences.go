@@ -50,6 +50,7 @@ func (smo scopeMarkeredOccurences) isEmponymousKey(pos token.Pos) bool {
 	if pos == token.NoPos {
 		return false
 	}
+
 	for _, occ := range smo {
 		if occ.ifStmtPos == pos {
 			return true
@@ -96,6 +97,7 @@ func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurr
 
 func (nom namedOccurrenceMap) isFoundByScopeMarker(scopeMarker int64) bool {
 	var i int
+
 	for _, markeredOccs := range nom {
 		for marker := range markeredOccs {
 			if marker == scopeMarker {
