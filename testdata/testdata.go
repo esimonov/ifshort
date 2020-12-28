@@ -205,6 +205,29 @@ func notUsed_SwitchStmt_Body_OK() {
 	}
 }
 
+func notUsed_SwitchStmt_Body_Assignment_OK() {
+	size := 0
+	if size == 0 {
+		return
+	}
+
+	switch 0 {
+	case 0:
+		a := make([]byte, size-2)
+		noOp1(a)
+	}
+}
+
+func notUsed_CompositeLiteral_OK() map[int]struct{} {
+	size := 0
+
+	if size != 0 {
+		return nil
+	}
+
+	return map[int]struct{}{size: struct{}{}}
+}
+
 func notUsed_MultipleAssignments_OK() interface{} {
 	a, b := returnTwoValues()
 	if a != nil {

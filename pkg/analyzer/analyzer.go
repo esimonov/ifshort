@@ -38,7 +38,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	inspector.Preorder(nodeFilter, func(node ast.Node) {
 		fdecl := node.(*ast.FuncDecl)
 
-		/*if fdecl.Name.Name != "jjdj" {
+		/*if fdecl.Name.Name != "notUsed_BinaryExpressionInIndex_OK" {
 			return
 		}*/
 
@@ -126,20 +126,30 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 	case *ast.SwitchStmt:
 		nom.checkExpression(v.Tag, token.NoPos)
 		for _, el := range v.Body.List {
-			if clauses, ok := el.(*ast.CaseClause); ok {
-				for _, c := range clauses.List {
-					switch v := c.(type) {
-					case *ast.BinaryExpr:
-						nom.checkExpression(v.X, token.NoPos)
-						nom.checkExpression(v.Y, token.NoPos)
-					case *ast.Ident:
-						nom.checkExpression(v, token.NoPos)
-					}
+			clauses, ok := el.(*ast.CaseClause)
+			if !ok {
+				continue
+			}
+			for _, c := range clauses.List {
+				switch v := c.(type) {
+				case *ast.BinaryExpr:
+					nom.checkExpression(v.X, token.NoPos)
+					nom.checkExpression(v.Y, token.NoPos)
+				case *ast.Ident:
+					nom.checkExpression(v, token.NoPos)
 				}
-				for _, c := range clauses.Body {
-					if est, ok := c.(*ast.ExprStmt); ok {
-						nom.checkExpression(est.X, token.NoPos)
+			}
+			for _, c := range clauses.Body {
+				if est, ok := c.(*ast.ExprStmt); ok {
+					nom.checkExpression(est.X, token.NoPos)
+				}
+				switch v := c.(type) {
+				case *ast.AssignStmt:
+					for _, el := range v.Rhs {
+						nom.checkExpression(el, token.NoPos)
 					}
+				case *ast.ExprStmt:
+					nom.checkExpression(v.X, token.NoPos)
 				}
 			}
 		}
