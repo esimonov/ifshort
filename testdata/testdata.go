@@ -368,6 +368,15 @@ func notUsed_IndexExpression_Indexed_OK() {
 	noOp1(first)
 }
 
+func notUsed_BinaryExpressionInIndex_OK() {
+	s := []int{}
+	size := 0
+	if size != 0 {
+		return
+	}
+	noOp1(s[size-1:])
+}
+
 func notUsed_SliceExpression_Low_OK() {
 	s := []int{}
 	size := 0
