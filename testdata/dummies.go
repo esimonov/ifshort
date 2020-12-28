@@ -8,9 +8,9 @@ func returnValue() interface{} { return nil }
 
 func returnTwoValues() (interface{}, interface{}) { return nil, nil }
 
-func callWithOneArgAndReturn(interface{}) interface{} { return nil }
+func callWithOneArgAndReturnValue(interface{}) interface{} { return nil }
 
-func callWithVariadicArgsAndReturn(...interface{}) interface{} { return nil }
+func callWithVariadicArgsAndReturnValue(...interface{}) interface{} { return nil }
 
 type dummyType struct{ v interface{} }
 

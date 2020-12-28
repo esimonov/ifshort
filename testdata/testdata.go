@@ -103,7 +103,7 @@ func notUsed_IfStmt_CondCallExpr_OK() {
 	if v != nil {
 		noOp1(v)
 	}
-	if callWithOneArgAndReturn(v) != nil {
+	if callWithOneArgAndReturnValue(v) != nil {
 		noOp2(v)
 	}
 }
@@ -201,19 +201,19 @@ func notUsed_MultipleAssignments_WhenFlagSettingsAreNotSatisfied_OK() {
 		return
 	}
 
-	c := callWithOneArgAndReturn(longDeclarationToDissatisfyFlagSettings)
+	c := callWithOneArgAndReturnValue(longDeclarationToDissatisfyFlagSettings)
 	noOp1(c)
 }
 
 func notUsed_LongDecl_OK() {
-	v := callWithVariadicArgsAndReturn("Long long long long long declaration, linter shouldn't force short syntax for it")
+	v := callWithVariadicArgsAndReturnValue("Long long long long long declaration, linter shouldn't force short syntax for it")
 	if v != nil {
 		noOp1(v)
 	}
 }
 
 func notUsed_HighDecl_OK() {
-	v := callWithVariadicArgsAndReturn(
+	v := callWithVariadicArgsAndReturnValue(
 		nil,
 		nil,
 		nil,
@@ -280,4 +280,16 @@ func notUsed_ReferenceToFields_OK() {
 		return
 	}
 	defer noOp1(b.v)
+}
+
+func notUsed_IndexStatement_OK() {
+	s := []int{}
+
+	length := len(s)
+	if length == 0 {
+		return
+	}
+
+	last := s[length-1]
+	noOp1(last)
 }

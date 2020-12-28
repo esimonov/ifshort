@@ -184,6 +184,12 @@ func (nom namedOccurrenceMap) check(candidate ast.Expr) {
 				}
 			}
 		}
+	case *ast.IndexExpr:
+		index, ok := v.Index.(*ast.BinaryExpr)
+		if ok {
+			return
+		}
+		nom.check(index.X)
 	case *ast.SelectorExpr:
 		nom.check(v.X)
 	case *ast.UnaryExpr:
