@@ -43,6 +43,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 			return
 		}*/
 
+		if fdecl == nil || fdecl.Body == nil {
+			return
+		}
+
 		candidates := getNamedOccurrenceMap(fdecl, pass)
 
 		for _, stmt := range fdecl.Body.List {
