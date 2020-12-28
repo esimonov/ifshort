@@ -269,6 +269,19 @@ func notUsed_Range_OK() {
 	}
 }
 
+func notUsed_For_OK() {
+	s := ""
+
+	dt := returnDummy()
+	if dt.v == nil {
+		return
+	}
+
+	for i := 0; i < len(s); i++ {
+		noOp1(dt.v)
+	}
+}
+
 func notUsed_AssignToField_OK() {
 	dt := dummyType{}
 	dt.v = returnValue()

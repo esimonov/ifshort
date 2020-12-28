@@ -38,72 +38,14 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	inspector.Preorder(nodeFilter, func(node ast.Node) {
 		fdecl := node.(*ast.FuncDecl)
 
-		/*if fdecl.Name.Name != "notUsed_MultipleAssignments_AllUsesInIfs_OK" {
+		/*if fdecl.Name.Name != "notUsed_For_OK" {
 			return
 		}*/
 
 		candidates := getNamedOccurrenceMap(fdecl, pass)
 
 		for _, stmt := range fdecl.Body.List {
-			switch v := stmt.(type) {
-			case *ast.AssignStmt:
-				for _, el := range v.Rhs {
-					candidates.check(el)
-				}
-			case *ast.DeferStmt:
-				for _, a := range v.Call.Args {
-					candidates.check(a)
-				}
-			case *ast.ExprStmt:
-				if callExpr, ok := v.X.(*ast.CallExpr); ok {
-					candidates.check(callExpr)
-				}
-			case *ast.IfStmt:
-				switch cond := v.Cond.(type) {
-				case *ast.BinaryExpr:
-					candidates.checkIf(cond.X, v.If)
-					candidates.checkIf(cond.Y, v.If)
-				case *ast.CallExpr:
-					candidates.checkIf(cond, v.If)
-				}
-				if init, ok := v.Init.(*ast.AssignStmt); ok {
-					for _, e := range init.Rhs {
-						candidates.checkIf(e, v.If)
-					}
-				}
-			case *ast.GoStmt:
-				for _, a := range v.Call.Args {
-					candidates.check(a)
-				}
-			case *ast.RangeStmt:
-				candidates.check(v.X)
-			case *ast.ReturnStmt:
-				for _, r := range v.Results {
-					candidates.check(r)
-				}
-			case *ast.SendStmt:
-				candidates.check(v.Value)
-			case *ast.SwitchStmt:
-				candidates.check(v.Tag)
-				for _, el := range v.Body.List {
-					if clauses, ok := el.(*ast.CaseClause); ok {
-						for _, c := range clauses.List {
-							switch v := c.(type) {
-							case *ast.BinaryExpr:
-								candidates.check(v.X)
-								candidates.check(v.Y)
-							case *ast.Ident:
-								candidates.check(v)
-							}
-						}
-						for _, c := range clauses.Body {
-							if est, ok := c.(*ast.ExprStmt); ok {
-								candidates.check(est.X)
-							}
-						}
-					}
-				}
-			}
+			candidates.checkStatement(stmt)
 		}
 
 		for varName := range candidates {
@@ -120,6 +62,72 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		}
 	})
 	return nil, nil
+}
+
+func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt) {
+	switch v := stmt.(type) {
+	case *ast.AssignStmt:
+		for _, el := range v.Rhs {
+			nom.check(el)
+		}
+	case *ast.DeferStmt:
+		for _, a := range v.Call.Args {
+			nom.check(a)
+		}
+	case *ast.ExprStmt:
+		if callExpr, ok := v.X.(*ast.CallExpr); ok {
+			nom.check(callExpr)
+		}
+	case *ast.IfStmt:
+		switch cond := v.Cond.(type) {
+		case *ast.BinaryExpr:
+			nom.checkIf(cond.X, v.If)
+			nom.checkIf(cond.Y, v.If)
+		case *ast.CallExpr:
+			nom.checkIf(cond, v.If)
+		}
+		if init, ok := v.Init.(*ast.AssignStmt); ok {
+			for _, e := range init.Rhs {
+				nom.checkIf(e, v.If)
+			}
+		}
+	case *ast.ForStmt:
+		for _, el := range v.Body.List {
+			nom.checkStatement(el)
+		}
+	case *ast.GoStmt:
+		for _, a := range v.Call.Args {
+			nom.check(a)
+		}
+	case *ast.RangeStmt:
+		nom.check(v.X)
+	case *ast.ReturnStmt:
+		for _, r := range v.Results {
+			nom.check(r)
+		}
+	case *ast.SendStmt:
+		nom.check(v.Value)
+	case *ast.SwitchStmt:
+		nom.check(v.Tag)
+		for _, el := range v.Body.List {
+			if clauses, ok := el.(*ast.CaseClause); ok {
+				for _, c := range clauses.List {
+					switch v := c.(type) {
+					case *ast.BinaryExpr:
+						nom.check(v.X)
+						nom.check(v.Y)
+					case *ast.Ident:
+						nom.check(v)
+					}
+				}
+				for _, c := range clauses.Body {
+					if est, ok := c.(*ast.ExprStmt); ok {
+						nom.check(est.X)
+					}
+				}
+			}
+		}
+	}
 }
 
 func (nom namedOccurrenceMap) checkIf(candidate ast.Expr, ifPos token.Pos) {
