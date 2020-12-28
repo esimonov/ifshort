@@ -94,8 +94,6 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 				nom.checkExpression(e, v.If)
 			}
 		}
-	case *ast.IncDecStmt:
-		nom.checkExpression(v.X, ifPos)
 	case *ast.ForStmt:
 		for _, el := range v.Body.List {
 			nom.checkStatement(el, ifPos)
@@ -105,6 +103,8 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 			nom.checkExpression(bexpr.Y, ifPos)
 		}
 		nom.checkStatement(v.Post, ifPos)
+	case *ast.IncDecStmt:
+		nom.checkExpression(v.X, ifPos)
 	case *ast.GoStmt:
 		for _, a := range v.Call.Args {
 			nom.checkExpression(a, token.NoPos)
@@ -190,6 +190,10 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 		}
 		nom.checkExpression(index.X, ifPos)
 	case *ast.SelectorExpr:
+		nom.checkExpression(v.X, ifPos)
+	case *ast.SliceExpr:
+		nom.checkExpression(v.High, ifPos)
+		nom.checkExpression(v.Low, ifPos)
 		nom.checkExpression(v.X, ifPos)
 	case *ast.UnaryExpr:
 		nom.checkExpression(v.X, ifPos)

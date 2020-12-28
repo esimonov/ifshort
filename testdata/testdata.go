@@ -286,6 +286,17 @@ func notUsed_Range_OK() {
 	}
 }
 
+func notUsed_ForCond_OK() {
+	i := 0
+	for i < 0 {
+		break
+	}
+
+	if i == 0 {
+		return
+	}
+}
+
 func notUsed_ForBody_OK() {
 	s := ""
 
@@ -296,17 +307,6 @@ func notUsed_ForBody_OK() {
 
 	for i := 0; i < len(s); i++ {
 		noOp1(dt.v)
-	}
-}
-
-func notUsed_ForCond_OK() {
-	i := 0
-	for i < 0 {
-		break
-	}
-
-	if i == 0 {
-		return
 	}
 }
 
@@ -323,19 +323,14 @@ func notUsed_ForPost_OK() {
 
 func notUsed_IncrementDecrement_OK() {
 	i := 0
-	for {
-		i++
-		break
-	}
+
+	i++
 
 	if i == 0 {
 		return
 	}
 
-	for {
-		i--
-		break
-	}
+	i--
 }
 
 func notUsed_AssignToField_OK() {
@@ -371,4 +366,22 @@ func notUsed_IndexExpression_Indexed_OK() {
 
 	first := s[0]
 	noOp1(first)
+}
+
+func notUsed_SliceExpression_Low_OK() {
+	s := []int{}
+	size := 0
+	if size != 0 {
+		return
+	}
+	noOp2(s[size:])
+}
+
+func notUsed_SliceExpression_High_OK() {
+	s := []int{}
+	size := 0
+	if size != 0 {
+		return
+	}
+	noOp1(s[:size])
 }
