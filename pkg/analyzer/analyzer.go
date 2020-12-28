@@ -38,7 +38,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	inspector.Preorder(nodeFilter, func(node ast.Node) {
 		fdecl := node.(*ast.FuncDecl)
 
-		/*if fdecl.Name.Name != "notUsed_For_OK" {
+		/*if fdecl.Name.Name != "jjdj" {
 			return
 		}*/
 
@@ -69,6 +69,11 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 	case *ast.AssignStmt:
 		for _, el := range v.Rhs {
 			nom.checkExpression(el, ifPos)
+		}
+		if isAssign(v.Tok) {
+			for _, el := range v.Lhs {
+				nom.checkExpression(el, ifPos)
+			}
 		}
 	case *ast.DeferStmt:
 		for _, a := range v.Call.Args {
@@ -191,11 +196,9 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 		}
 	case *ast.IndexExpr:
 		nom.checkExpression(v.X, ifPos)
-		index, ok := v.Index.(*ast.BinaryExpr)
-		if !ok {
-			return
+		if index, ok := v.Index.(*ast.BinaryExpr); ok {
+			nom.checkExpression(index.X, ifPos)
 		}
-		nom.checkExpression(index.X, ifPos)
 	case *ast.SelectorExpr:
 		nom.checkExpression(v.X, ifPos)
 	case *ast.SliceExpr:
@@ -205,4 +208,12 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 	case *ast.UnaryExpr:
 		nom.checkExpression(v.X, ifPos)
 	}
+}
+
+func isAssign(tok token.Token) bool {
+	return (tok == token.ASSIGN ||
+		tok == token.ADD_ASSIGN || tok == token.SUB_ASSIGN ||
+		tok == token.MUL_ASSIGN || tok == token.QUO_ASSIGN || tok == token.REM_ASSIGN ||
+		tok == token.AND_ASSIGN || tok == token.OR_ASSIGN || tok == token.XOR_ASSIGN || tok == token.AND_NOT_ASSIGN ||
+		tok == token.SHL_ASSIGN || tok == token.SHR_ASSIGN)
 }

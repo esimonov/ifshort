@@ -108,20 +108,32 @@ func notUsed_IfStmt_CondCallExpr_OK() {
 	}
 }
 
-func notUsed_IfStmt_Body_OK(scale int) {
-	pos := 0
-	if pos <= 0 {
-		noOp1(pos)
-	} else if pos > 0 {
-		noOp2(pos)
+func notUsed_IfStmt_Body_OK() {
+	a, b := 0, 0
+
+	if a <= 0 {
+		noOp1(a)
+	} else if a > 0 {
+		noOp2(a)
 	}
-	if scale > 0 {
-		noOp1(pos)
-		for pos < 0 {
-			noOp2(pos)
-			pos++
+	if b > 0 {
+		noOp1(a)
+		for a < 0 {
+			noOp2(a)
+			a++
 		}
-		noOp1(pos)
+		noOp1(a)
+	}
+}
+
+func notUsed_IfStmt_AssignInLeftHandSide_OK() {
+	a := 0
+
+	if b := 0; b > 0 {
+		a = 0
+	}
+	if a > 0 {
+		return
 	}
 }
 
