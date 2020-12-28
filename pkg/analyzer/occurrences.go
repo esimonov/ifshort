@@ -220,7 +220,7 @@ func (nom namedOccurrenceMap) addFromIdent(ifPos token.Pos, v ast.Expr) {
 		marker := nom[ident.Name].getGreatestMarker()
 
 		occ := markeredOccs[marker]
-		if occ.ifStmtPos != token.NoPos && occ.declarationPos != token.NoPos {
+		if occ.isComplete() {
 			return
 		}
 

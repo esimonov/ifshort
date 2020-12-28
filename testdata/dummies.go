@@ -12,9 +12,9 @@ func getBool(...interface{}) bool { return false }
 
 type dummyType struct{ v interface{} }
 
-func returnDummy() dummyType { return dummyType{} }
+func getDummy() dummyType { return dummyType{} }
 
-func returnTwoDummies() (dummyType, dummyType) { return dummyType{}, dummyType{} }
+func getTwoDummies() (dummyType, dummyType) { return dummyType{}, dummyType{} }
 
 func (dt dummyType) noOp() {}
 

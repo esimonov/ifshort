@@ -91,7 +91,7 @@ func notUsed_IfStmt_CondBinaryExpr_OK() {
 }
 
 func notUsed_IfStmt_CondBinaryExpr_MethodCall_OK() {
-	dt := returnDummy()
+	dt := getDummy()
 	if v := dt.getValue(); v == nil {
 		noOp1(v)
 	}
@@ -279,72 +279,68 @@ func notUsed_HighDecl_OK() {
 }
 
 func notUsed_MethodCall_OK() {
-	dt := dummyType{}
-	if dt.v == nil {
+	d := dummyType{}
+	if d.v == nil {
 	}
-	dt.noOp()
+	d.noOp()
 }
 
 func notUsed_MethodCallWithAssignment_OK() {
-	dt := dummyType{}
-	if dt.v != nil {
+	d := dummyType{}
+	if d.v != nil {
 	}
 
-	v := dt.getValue()
+	v := d.getValue()
 	noOp1(v)
 }
 
 func notUsed_MethodCall_Nested_OK() {
-	dt := dummyType{}
-	if dt.v != nil {
+	d := dummyType{}
+	if d.v != nil {
 	}
-	noOp1(dt.getValue())
+	noOp1(d.getValue())
 }
 
 func notUsed_Pointer_OK() {
-	dt := dummyType{}
-	if dt.v != nil {
+	d := dummyType{}
+	if d.v != nil {
 	}
-	noOp1(&dt)
+	noOp1(&d)
 }
 
 func notUsed_CondMethodCall_OK() {
-	dt := dummyType{}
-	if dt.getValue() == nil {
+	d := dummyType{}
+	if d.getValue() == nil {
 	}
 }
 
 func notUsed_Range_OK() {
-	dts := []dummyType{}
-	if dts == nil {
+	ds := []dummyType{}
+	if ds == nil {
 	}
 
-	for _, dt := range dts {
-		dt.noOp()
+	for _, d := range ds {
+		d.noOp()
 	}
 }
 
-func notUsed_ForCond_OK() {
-	i := 0
+func notUsed_ForCond_OK(i int) {
 	for i < 0 {
 		break
 	}
-
 	if i == 0 {
 		return
 	}
 }
 
-func notUsed_ForBody_OK() {
-	s := ""
-
-	dt := returnDummy()
-	if dt.v == nil {
+func notUsed_ForBody_OK(t int) {
+	d := getDummy()
+	if d.v == nil {
 		return
 	}
 
-	for i := 0; i < len(s); i++ {
-		noOp1(dt.v)
+	for i := 0; i < t; i++ {
+		noOp1(d.v)
 	}
 }
 
@@ -369,16 +365,16 @@ func notUsed_IncrementDecrement_OK() {
 }
 
 func notUsed_AssignToField_OK() {
-	dt := dummyType{}
-	dt.v = getValue()
+	d := dummyType{}
+	d.v = getValue()
 }
 
 func notUsed_ReferenceToFields_OK() {
-	a, b := returnTwoDummies()
-	if a.v != nil {
+	a, b := getTwoDummies()
+	if getBool(a.v) {
 		return
 	}
-	defer noOp1(b.v)
+	noOp1(b.v)
 }
 
 func notUsed_IndexExpression_Index_OK() {
@@ -403,30 +399,25 @@ func notUsed_IndexExpression_Indexed_OK() {
 	noOp1(first)
 }
 
-func notUsed_BinaryExpressionInIndex_OK() {
-	size := 0
-
+func notUsed_BinaryExpressionInIndex_OK(size int) {
 	if size == 0 {
 		return
 	}
 
-	buf := make([]byte, size-1)
-
-	noOp1(buf)
+	a := make([]byte, size-1)
+	noOp1(a)
 }
 
-func notUsed_SliceExpression_Low_OK() {
+func notUsed_SliceExpression_Low_OK(size int) {
 	s := []int{}
-	size := 0
 	if size != 0 {
 		return
 	}
 	noOp2(s[size:])
 }
 
-func notUsed_SliceExpression_High_OK() {
+func notUsed_SliceExpression_High_OK(size int) {
 	s := []int{}
-	size := 0
 	if size != 0 {
 		return
 	}
