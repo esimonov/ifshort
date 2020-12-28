@@ -8,47 +8,134 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-type occurrenceInfo struct {
+// occurrence is a variable occurrence.
+type occurrence struct {
 	declarationPos token.Pos
 	ifStmtPos      token.Pos
-	lhsMarker      int64
 }
 
-func getOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) map[string]occurrenceInfo {
-	occs := map[string]occurrenceInfo{}
+func (occ *occurrence) isComplete() bool {
+	return occ.ifStmtPos != token.NoPos && occ.declarationPos != token.NoPos
+}
+
+// scopeMarkeredOccurences is a map of scope markers to variable occurrences.
+type scopeMarkeredOccurences map[int64]occurrence
+
+func (smo scopeMarkeredOccurences) getGreatestMarker() int64 {
+	var maxScopeMarker int64
+
+	for marker := range smo {
+		if marker > maxScopeMarker {
+			maxScopeMarker = marker
+		}
+	}
+	return maxScopeMarker
+}
+
+// find scope marker of the greatest token.Pos that is smaller than provided.
+func (smo scopeMarkeredOccurences) getScopeMarkerForPosition(pos token.Pos) int64 {
+	var m int64
+	var foundPos token.Pos
+
+	for marker, occ := range smo {
+		if occ.declarationPos < pos && occ.declarationPos >= foundPos {
+			m = marker
+			foundPos = occ.declarationPos
+		}
+	}
+	return m
+}
+
+func (smo scopeMarkeredOccurences) isEmponymousKey(pos token.Pos) bool {
+	if pos == token.NoPos {
+		return false
+	}
+
+	for _, occ := range smo {
+		if occ.ifStmtPos == pos {
+			return true
+		}
+	}
+	return false
+}
+
+// namedOccurrenceMap is a map of variable names to scopeMarkeredOccurences.
+type namedOccurrenceMap map[string]scopeMarkeredOccurences
+
+func getNamedOccurrenceMap(fdecl *ast.FuncDecl, pass *analysis.Pass) namedOccurrenceMap {
+	nom := namedOccurrenceMap(map[string]scopeMarkeredOccurences{})
 
 	for _, stmt := range fdecl.Body.List {
 		switch v := stmt.(type) {
 		case *ast.AssignStmt:
-			addOccurrencesFromAssignment(pass, v, occs)
+			nom.addFromAssignment(pass, v)
 		case *ast.IfStmt:
-			addOccurrenceFromCondition(v.Cond, occs)
-			addOccurrenceFromIfClause(v.Body, occs)
-			addOccurrenceFromElseClause(v.Else, occs)
+			nom.addFromCondition(v)
+			nom.addFromIfClause(v)
+			nom.addFromElseClause(v)
 		}
 	}
-	return occs
+
+	candidates := namedOccurrenceMap(map[string]scopeMarkeredOccurences{})
+
+	for varName, markeredOccs := range nom {
+		for marker, occ := range markeredOccs {
+			if !occ.isComplete() && !nom.isFoundByScopeMarker(marker) {
+				continue
+			}
+			if _, ok := candidates[varName]; !ok {
+				candidates[varName] = scopeMarkeredOccurences{
+					marker: occ,
+				}
+			} else {
+				candidates[varName][marker] = occ
+			}
+		}
+	}
+	return candidates
 }
 
-func addOccurrencesFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt, occs map[string]occurrenceInfo) {
-	lhsMarker := time.Now().UnixNano()
+func (nom namedOccurrenceMap) isFoundByScopeMarker(scopeMarker int64) bool {
+	var i int
+
+	for _, markeredOccs := range nom {
+		for marker := range markeredOccs {
+			if marker == scopeMarker {
+				i++
+			}
+		}
+	}
+	return i >= 2
+}
+
+func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment *ast.AssignStmt) {
+	if assignment.Tok != token.DEFINE {
+		return
+	}
+
+	scopeMarker := time.Now().UnixNano()
 
 	for i, el := range assignment.Lhs {
-		lhsIdent, ok := el.(*ast.Ident)
+		ident, ok := el.(*ast.Ident)
 		if !ok {
 			continue
 		}
 
-		if lhsIdent.Name != "_" && lhsIdent.Obj != nil && lhsIdent.Obj.Pos() == lhsIdent.Pos() {
-			if oi, ok := occs[lhsIdent.Name]; ok {
-				oi.declarationPos = lhsIdent.Pos()
-				occs[lhsIdent.Name] = oi
-			} else if areFlagSettingsSatisfied(pass, assignment, i) {
-				occs[lhsIdent.Name] = occurrenceInfo{
-					declarationPos: lhsIdent.Pos(),
-					lhsMarker:      lhsMarker,
-				}
+		if ident.Name == "_" || ident.Obj == nil {
+			continue
+		}
+
+		if markeredOccs, ok := nom[ident.Name]; ok {
+			markeredOccs[scopeMarker] = occurrence{
+				declarationPos: ident.Pos(),
 			}
+			nom[ident.Name] = markeredOccs
+		} else {
+			newOcc := occurrence{}
+			if areFlagSettingsSatisfied(pass, assignment, i) {
+				newOcc.declarationPos = ident.Pos()
+			}
+			nom[ident.Name] = scopeMarkeredOccurences{scopeMarker: newOcc}
 		}
 	}
 }
@@ -70,38 +157,38 @@ func areFlagSettingsSatisfied(pass *analysis.Pass, assignment *ast.AssignStmt, i
 	return true
 }
 
-func addOccurrenceFromCondition(stmt ast.Expr, occs map[string]occurrenceInfo) {
-	switch v := stmt.(type) {
+func (nom namedOccurrenceMap) addFromCondition(stmt *ast.IfStmt) {
+	switch v := stmt.Cond.(type) {
 	case *ast.BinaryExpr:
 		for _, v := range [2]ast.Expr{v.X, v.Y} {
 			switch e := v.(type) {
 			case *ast.Ident:
-				addOccurrenceFromIdent(occs, e)
+				nom.addFromIdent(stmt.If, e)
 			case *ast.SelectorExpr:
-				addOccurrenceFromIdent(occs, e.X)
+				nom.addFromIdent(stmt.If, e.X)
 			}
 		}
 	case *ast.CallExpr:
 		for _, a := range v.Args {
 			switch e := a.(type) {
 			case *ast.Ident:
-				addOccurrenceFromIdent(occs, e)
+				nom.addFromIdent(stmt.If, e)
 			case *ast.CallExpr:
-				addOccurrenceFromCallExpr(occs, e)
+				nom.addFromCallExpr(stmt.If, e)
 			}
 		}
 	}
 }
 
-func addOccurrenceFromIfClause(stmt ast.Stmt, occs map[string]occurrenceInfo) {
-	addOccurrenceFromBlockStmt(stmt, occs)
+func (nom namedOccurrenceMap) addFromIfClause(stmt *ast.IfStmt) {
+	nom.addFromBlockStmt(stmt.Body, stmt.If)
 }
 
-func addOccurrenceFromElseClause(stmt ast.Stmt, occs map[string]occurrenceInfo) {
-	addOccurrenceFromBlockStmt(stmt, occs)
+func (nom namedOccurrenceMap) addFromElseClause(stmt *ast.IfStmt) {
+	nom.addFromBlockStmt(stmt.Else, stmt.If)
 }
 
-func addOccurrenceFromBlockStmt(stmt ast.Stmt, occs map[string]occurrenceInfo) {
+func (nom namedOccurrenceMap) addFromBlockStmt(stmt ast.Stmt, ifPos token.Pos) {
 	blockStmt, ok := stmt.(*ast.BlockStmt)
 	if !ok {
 		return
@@ -114,26 +201,32 @@ func addOccurrenceFromBlockStmt(stmt ast.Stmt, occs map[string]occurrenceInfo) {
 		}
 
 		if callExpr, ok := exptStmt.X.(*ast.CallExpr); ok {
-			addOccurrenceFromCallExpr(occs, callExpr)
+			nom.addFromCallExpr(ifPos, callExpr)
 		}
 	}
 }
 
-func addOccurrenceFromCallExpr(occs map[string]occurrenceInfo, callExpr *ast.CallExpr) {
+func (nom namedOccurrenceMap) addFromCallExpr(ifPos token.Pos, callExpr *ast.CallExpr) {
 	for _, arg := range callExpr.Args {
-		addOccurrenceFromIdent(occs, arg)
+		nom.addFromIdent(ifPos, arg)
 	}
 }
 
-func addOccurrenceFromIdent(occs map[string]occurrenceInfo, v ast.Expr) {
-	if ident, ok := v.(*ast.Ident); ok {
-		if oi, ok := occs[ident.Name]; ok {
-			if oi.ifStmtPos != 0 && oi.declarationPos != 0 {
-				return
-			}
+func (nom namedOccurrenceMap) addFromIdent(ifPos token.Pos, v ast.Expr) {
+	ident, ok := v.(*ast.Ident)
+	if !ok {
+		return
+	}
 
-			oi.ifStmtPos = v.Pos()
-			occs[ident.Name] = oi
+	if markeredOccs, ok := nom[ident.Name]; ok {
+		marker := nom[ident.Name].getGreatestMarker()
+
+		occ := markeredOccs[marker]
+		if occ.isComplete() {
+			return
 		}
+
+		occ.ifStmtPos = ifPos
+		nom[ident.Name][marker] = occ
 	}
 }
