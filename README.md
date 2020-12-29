@@ -1,4 +1,5 @@
 # ifshort
+[![Go Report Card](https://goreportcard.com/badge/github.com/esimonov/ifshort)](https://goreportcard.com/report/github.com/esimonov/ifshort)
 
 Go linter that checks if your code uses short syntax for `if`-statements whenever possible.
 
