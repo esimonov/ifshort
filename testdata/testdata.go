@@ -1,5 +1,9 @@
 package testdata
 
+import (
+	"sync"
+)
+
 // Cases where short syntax SHOULD be used AND IS used.
 
 func used_CondBinary_UsedInBody_OK() {
@@ -431,6 +435,23 @@ func notUsed_FuncLitReturn_OK() {
 	tp()
 
 	if s != "" {
+		return
+	}
+}
+
+func loopVar_OK() {
+	wg := &sync.WaitGroup{}
+	for range []int{1, 2, 3} {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+		}()
+	}
+
+	if func(wg *sync.WaitGroup) bool {
+		wg.Wait()
+		return true
+	}(wg) {
 		return
 	}
 }
