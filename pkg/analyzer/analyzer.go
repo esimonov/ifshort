@@ -126,6 +126,11 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 
 	case *ast.RangeStmt:
 		nom.checkExpression(v.X, token.NoPos)
+		if v.Body != nil {
+			for _, e := range v.Body.List {
+				nom.checkStatement(e, ifPos)
+			}
+		}
 	case *ast.ReturnStmt:
 		for _, r := range v.Results {
 			nom.checkExpression(r, token.NoPos)

@@ -434,3 +434,11 @@ func notUsed_FuncLitReturn_OK() {
 		return
 	}
 }
+
+func notUsed_AssignmentToPointer_OK() {
+	v := &dummyType{}
+
+	if v != nil { // cannot be `if v := &dummyType{}; v != nil
+		return
+	}
+}
