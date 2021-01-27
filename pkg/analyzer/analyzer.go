@@ -229,6 +229,8 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 		nom.checkExpression(v.High, ifPos)
 		nom.checkExpression(v.Low, ifPos)
 		nom.checkExpression(v.X, ifPos)
+	case *ast.TypeAssertExpr:
+		nom.checkExpression(v.X, ifPos)
 	case *ast.UnaryExpr:
 		nom.checkExpression(v.X, ifPos)
 	}

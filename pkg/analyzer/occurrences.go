@@ -125,7 +125,7 @@ func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment 
 			continue
 		}
 
-		if ident.Name == "_" || ident.Obj == nil || isAssignmentToPointer(ident.Obj.Decl) {
+		if ident.Name == "_" || ident.Obj == nil || isUnshortenableAssignment(ident.Obj.Decl) {
 			continue
 		}
 
@@ -144,7 +144,7 @@ func (nom namedOccurrenceMap) addFromAssignment(pass *analysis.Pass, assignment 
 	}
 }
 
-func isAssignmentToPointer(decl interface{}) bool {
+func isUnshortenableAssignment(decl interface{}) bool {
 	assign, ok := decl.(*ast.AssignStmt)
 	if !ok {
 		return false

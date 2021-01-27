@@ -442,3 +442,15 @@ func notUsed_AssignmentToPointer_OK() {
 		return
 	}
 }
+
+func notUsed_TypeAssertion_OK() {
+	v := getValue()
+	if v == nil {
+		noOp1(v)
+	}
+
+	w, ok := v.(*dummyType)
+	if !ok {
+		noOp2(w)
+	}
+}
