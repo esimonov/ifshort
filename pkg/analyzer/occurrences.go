@@ -193,6 +193,8 @@ func (nom namedOccurrenceMap) addFromCondition(stmt *ast.IfStmt) {
 				nom.addFromIdent(stmt.If, e.X)
 			}
 		}
+	case *ast.Ident:
+		nom.addFromIdent(stmt.If, v)
 	case *ast.CallExpr:
 		for _, a := range v.Args {
 			switch e := a.(type) {

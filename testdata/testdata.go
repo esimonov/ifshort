@@ -42,6 +42,13 @@ func notUsed_CondCallExpr_NotOK() {
 	}
 }
 
+func notUsed_CondIdent_NotOK() {
+	v := getBool() // want "variable '.+' is only used in the if-statement"
+	if v {
+		return
+	}
+}
+
 func notUsed_Body_NotOK() {
 	v := getValue() // want "variable '.+' is only used in the if-statement"
 	if true {
