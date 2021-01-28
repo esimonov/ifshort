@@ -10,7 +10,12 @@ func getTwoValues(...interface{}) (interface{}, interface{}) { return nil, nil }
 
 func getBool(...interface{}) bool { return false }
 
-type dummyType struct{ v interface{} }
+func getInt(...interface{}) int { return 0 }
+
+type dummyType struct {
+	interf interface{}
+	slice  []interface{}
+}
 
 func getDummy(...interface{}) dummyType { return dummyType{} }
 

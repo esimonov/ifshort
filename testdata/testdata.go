@@ -95,7 +95,7 @@ func notUsed_IfStmt_CondBinaryExpr_MethodCall_OK() {
 	if v := dt.getValue(); v == nil {
 		noOp1(v)
 	}
-	if dt.v != nil {
+	if dt.interf != nil {
 		noOp2(dt)
 	}
 }
@@ -280,14 +280,14 @@ func notUsed_HighDecl_OK() {
 
 func notUsed_MethodCall_OK() {
 	d := dummyType{}
-	if d.v == nil {
+	if d.interf == nil {
 	}
 	d.noOp()
 }
 
 func notUsed_MethodCallWithAssignment_OK() {
 	d := dummyType{}
-	if d.v != nil {
+	if d.interf != nil {
 	}
 
 	v := d.getValue()
@@ -296,14 +296,14 @@ func notUsed_MethodCallWithAssignment_OK() {
 
 func notUsed_MethodCall_Nested_OK() {
 	d := dummyType{}
-	if d.v != nil {
+	if d.interf != nil {
 	}
 	noOp1(d.getValue())
 }
 
 func notUsed_Pointer_OK() {
 	d := dummyType{}
-	if d.v != nil {
+	if d.interf != nil {
 	}
 	noOp1(&d)
 }
@@ -335,12 +335,12 @@ func notUsed_ForCond_OK(i int) {
 
 func notUsed_ForBody_OK(t int) {
 	d := getDummy()
-	if d.v == nil {
+	if d.interf == nil {
 		return
 	}
 
 	for i := 0; i < t; i++ {
-		noOp1(d.v)
+		noOp1(d.interf)
 	}
 }
 
@@ -366,15 +366,15 @@ func notUsed_IncrementDecrement_OK() {
 
 func notUsed_AssignToField_OK() {
 	d := dummyType{}
-	d.v = getValue()
+	d.interf = getValue()
 }
 
 func notUsed_ReferenceToFields_OK() {
 	a, b := getTwoDummies()
-	if getBool(a.v) {
+	if getBool(a.interf) {
 		return
 	}
-	noOp1(b.v)
+	noOp1(b.interf)
 }
 
 func notUsed_IndexExpression_Index_OK() {
@@ -387,6 +387,17 @@ func notUsed_IndexExpression_Index_OK() {
 
 	last := s[length-1]
 	noOp1(last)
+}
+
+func notUsed_IndexExpression_StructField_Index_OK() interface{} {
+	dummy := getDummy()
+
+	idx := getInt()
+
+	if idx < 0 {
+		return nil
+	}
+	return dummy.slice[idx]
 }
 
 func notUsed_IndexExpression_Indexed_OK() {
