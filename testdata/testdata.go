@@ -162,7 +162,16 @@ func notUsed_ReturnStmt_OK() interface{} {
 	return v
 }
 
-func notUsed_SendStmt_OK() {
+func notUsed_SendStmt_Chan_OK(v interface{}) {
+	ch := make(chan interface{})
+
+	if ch == nil {
+		return
+	}
+	ch <- v
+}
+
+func notUsed_SendStmt_Value_OK() {
 	v := getValue()
 	if v != nil {
 		noOp1(v)
@@ -470,5 +479,15 @@ func notUsed_TypeAssertion_OK() {
 	w, ok := v.(*dummyType)
 	if !ok {
 		noOp2(w)
+	}
+}
+
+func notUsed_BinaryExprInAssign_OK() {
+	v1 := "v1"
+
+	_ = "v2" + v1
+
+	if false {
+		noOp1(v1)
 	}
 }

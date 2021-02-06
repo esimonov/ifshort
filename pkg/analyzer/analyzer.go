@@ -135,6 +135,7 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 			nom.checkExpression(r, token.NoPos)
 		}
 	case *ast.SendStmt:
+		nom.checkExpression(v.Chan, token.NoPos)
 		nom.checkExpression(v.Value, token.NoPos)
 	case *ast.SwitchStmt:
 		nom.checkExpression(v.Tag, token.NoPos)
@@ -177,6 +178,7 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 	switch v := candidate.(type) {
 	case *ast.BinaryExpr:
 		nom.checkExpression(v.X, ifPos)
+		nom.checkExpression(v.Y, ifPos)
 	case *ast.CallExpr:
 		for _, arg := range v.Args {
 			nom.checkExpression(arg, ifPos)
