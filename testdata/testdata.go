@@ -244,7 +244,7 @@ func notUsed_SwitchStmt_Body_Assignment_OK() {
 	}
 }
 
-func notUsed_CompositeLiteral_OK() map[int]struct{} {
+func notUsed_CompositeLiteral_Map_OK() map[int]struct{} {
 	a := 0
 	if a != 0 {
 		return nil
@@ -253,6 +253,17 @@ func notUsed_CompositeLiteral_OK() map[int]struct{} {
 	b := struct{}{}
 
 	return map[int]struct{}{a: b}
+}
+
+func notUsed_CompositeLiteral_Struct_OK() dummyType {
+	d := getDummy()
+	if d.interf == 0 {
+		return d
+	}
+
+	return dummyType{
+		interf: getValue(d),
+	}
 }
 
 func notUsed_MultipleAssignments_OK() interface{} {

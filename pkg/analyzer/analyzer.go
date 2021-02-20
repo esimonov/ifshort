@@ -193,12 +193,8 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 			if !ok {
 				continue
 			}
-			if ident, ok := kv.Key.(*ast.Ident); ok {
-				nom.checkExpression(ident, ifPos)
-			}
-			if ident, ok := kv.Value.(*ast.Ident); ok {
-				nom.checkExpression(ident, ifPos)
-			}
+			nom.checkExpression(kv.Key, ifPos)
+			nom.checkExpression(kv.Value, ifPos)
 		}
 	case *ast.FuncLit:
 		for _, el := range v.Body.List {
