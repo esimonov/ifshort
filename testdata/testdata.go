@@ -87,6 +87,14 @@ func notUsed_DeferStmt_OK() {
 	defer noOp2(v)
 }
 
+func notUsed_FuncDecl_OK(a func()) {
+	v := a
+	if v == nil {
+		return
+	}
+	v()
+}
+
 func notUsed_IfStmt_CondBinaryExpr_OK() {
 	v := getValue()
 	if v != nil {

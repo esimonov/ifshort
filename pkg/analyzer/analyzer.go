@@ -183,6 +183,7 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 		for _, arg := range v.Args {
 			nom.checkExpression(arg, ifPos)
 		}
+		nom.checkExpression(v.Fun, ifPos)
 		if fun, ok := v.Fun.(*ast.SelectorExpr); ok {
 			nom.checkExpression(fun.X, ifPos)
 		}
