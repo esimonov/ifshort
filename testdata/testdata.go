@@ -266,6 +266,14 @@ func notUsed_CompositeLiteral_Struct_OK() dummyType {
 	}
 }
 
+func notUsed_CompositeLiteral_Array_OK() []interface{} {
+	v := getValue()
+	if v == nil {
+		return nil
+	}
+	return []interface{}{v}
+}
+
 func notUsed_MultipleAssignments_OK() interface{} {
 	a, b := getTwoValues()
 	if a != nil {

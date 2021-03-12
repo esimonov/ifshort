@@ -189,12 +189,13 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 		}
 	case *ast.CompositeLit:
 		for _, el := range v.Elts {
-			kv, ok := el.(*ast.KeyValueExpr)
-			if !ok {
-				continue
+			switch v := el.(type) {
+			case *ast.Ident:
+				nom.checkExpression(v, ifPos)
+			case *ast.KeyValueExpr:
+				nom.checkExpression(v.Key, ifPos)
+				nom.checkExpression(v.Value, ifPos)
 			}
-			nom.checkExpression(kv.Key, ifPos)
-			nom.checkExpression(kv.Value, ifPos)
 		}
 	case *ast.FuncLit:
 		for _, el := range v.Body.List {
