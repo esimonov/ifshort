@@ -518,3 +518,52 @@ func notUsed_BinaryExprInAssign_OK() {
 		noOp1(v1)
 	}
 }
+
+func notUsed_ReferenceInSelect_OK() {
+	v := 0
+	if getBool(v) {
+		v = 1
+	}
+	select {
+	case <-getChan(v):
+	}
+}
+
+func notUsed_AssignInSwitch_OK() {
+	y := 100
+	switch {
+	case true:
+		y = 1
+	}
+	if y < 5 {
+	}
+}
+
+func notUsed_PassPointer_OK() {
+	a := getDummyPtr()
+	if a == nil {
+	}
+	noOp1(*a)
+}
+
+func notUsed_Labels_OK() {
+	foo := true
+BREAKOUT:
+	if getBool() {
+		foo = false
+		goto BREAKOUT
+	}
+	if foo {
+		return
+	}
+}
+
+func notUsed_UnnerStruct_OK() {
+	v := getInt()
+	if v == 0 {
+		v = 1
+	}
+	type Wrapper struct{ V int }
+	t := []Wrapper{{v}}
+	noOp1(t)
+}
