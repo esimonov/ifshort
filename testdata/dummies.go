@@ -12,12 +12,16 @@ func getBool(...interface{}) bool { return false }
 
 func getInt(...interface{}) int { return 0 }
 
+func getChan(...interface{}) chan interface{} { return nil }
+
 type dummyType struct {
 	interf interface{}
 	slice  []interface{}
 }
 
 func getDummy(...interface{}) dummyType { return dummyType{} }
+
+func getDummyPtr(...interface{}) *dummyType { return &dummyType{} }
 
 func getTwoDummies(...interface{}) (dummyType, dummyType) { return dummyType{}, dummyType{} }
 
