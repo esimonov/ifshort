@@ -217,6 +217,8 @@ func (nom namedOccurrenceMap) checkExpression(candidate ast.Expr, ifPos token.Po
 			case *ast.KeyValueExpr:
 				nom.checkExpression(v.Key, ifPos)
 				nom.checkExpression(v.Value, ifPos)
+			case *ast.SelectorExpr:
+				nom.checkExpression(v.X, ifPos)
 			}
 		}
 	case *ast.FuncLit:

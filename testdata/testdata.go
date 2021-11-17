@@ -567,3 +567,11 @@ func notUsed_UnnerStruct_OK() {
 	t := []Wrapper{{v}}
 	noOp1(t)
 }
+
+func notUsed_ReturnInSlice_Selector_OK(d dummyType) ([]interface{}, interface{}) {
+	v := d
+	if v.interf != nil {
+		return nil, v.interf
+	}
+	return []interface{}{v.interf}, nil
+}
