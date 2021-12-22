@@ -108,8 +108,15 @@ func (nom namedOccurrenceMap) checkStatement(stmt ast.Stmt, ifPos token.Pos) {
 		for _, el := range v.Body.List {
 			nom.checkStatement(el, v.If)
 		}
+		if elseBlock, ok := v.Else.(*ast.BlockStmt); ok {
+			for _, el := range elseBlock.List {
+				nom.checkStatement(el, v.If)
+			}
+		}
 
 		switch cond := v.Cond.(type) {
+		case *ast.UnaryExpr:
+			nom.checkExpression(cond.X, v.If)
 		case *ast.BinaryExpr:
 			nom.checkExpression(cond.X, v.If)
 			nom.checkExpression(cond.Y, v.If)
