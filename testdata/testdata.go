@@ -77,6 +77,14 @@ func notUsed_DifferentVarsWithSameName_NotOK() {
 	noOp2(b)
 }
 
+func notUsed_UnaryOpIfStatement_NotOK() {
+	shouldRun := false // want "variable '.+' is only used in the if-statement"
+	if !shouldRun {
+		return
+	}
+	noOp1(0)
+}
+
 // Cases where short syntax SHOULD NOT be used AND IS NOT used.
 
 func notUsed_DeferStmt_OK() {
@@ -574,4 +582,28 @@ func notUsed_ReturnInSlice_Selector_OK(d dummyType) ([]interface{}, interface{})
 		return nil, v.interf
 	}
 	return []interface{}{v.interf}, nil
+}
+
+func notUsed_Multiple_If_Statements_OK() {
+	shouldRun := false
+	if shouldRun {
+		noOp1(0)
+	}
+	if !shouldRun {
+		return
+	}
+	noOp2(0)
+}
+
+func notUsed_Also_Used_In_Else_Body_OK() {
+	x := 0
+	if x > 0 {
+		noOp1(0)
+	}
+
+	if y := getInt(0); y > 0 {
+		noOp1(y)
+	} else {
+		noOp1(x)
+	}
 }
