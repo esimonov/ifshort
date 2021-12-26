@@ -195,15 +195,6 @@ func (nom namedOccurrenceMap) addFromCondition(stmt *ast.IfStmt) {
 				nom.addFromIdent(stmt.If, e.X)
 			}
 		}
-	case *ast.UnaryExpr:
-		switch e := v.X.(type) {
-		case *ast.Ident:
-			nom.addFromIdent(stmt.If, e)
-		case *ast.SelectorExpr:
-			nom.addFromIdent(stmt.If, e.X)
-		}
-	case *ast.Ident:
-		nom.addFromIdent(stmt.If, v)
 	case *ast.CallExpr:
 		for _, a := range v.Args {
 			switch e := a.(type) {
@@ -212,6 +203,15 @@ func (nom namedOccurrenceMap) addFromCondition(stmt *ast.IfStmt) {
 			case *ast.CallExpr:
 				nom.addFromCallExpr(stmt.If, e)
 			}
+		}
+	case *ast.Ident:
+		nom.addFromIdent(stmt.If, v)
+	case *ast.UnaryExpr:
+		switch e := v.X.(type) {
+		case *ast.Ident:
+			nom.addFromIdent(stmt.If, e)
+		case *ast.SelectorExpr:
+			nom.addFromIdent(stmt.If, e.X)
 		}
 	}
 }
