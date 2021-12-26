@@ -187,6 +187,8 @@ func (nom namedOccurrenceMap) addFromCondition(stmt *ast.IfStmt) {
 	case *ast.BinaryExpr:
 		for _, v := range [2]ast.Expr{v.X, v.Y} {
 			switch e := v.(type) {
+			case *ast.CallExpr:
+				nom.addFromCallExpr(stmt.If, e)
 			case *ast.Ident:
 				nom.addFromIdent(stmt.If, e)
 			case *ast.SelectorExpr:

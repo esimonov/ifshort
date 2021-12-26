@@ -49,6 +49,12 @@ func notUsed_CondIdent_NotOK() {
 	}
 }
 
+func notUsed_CondCallWithIndentExpr_NotOK() {
+	v := getInt() // want "variable '.+' is only used in the if-statement"
+	if int(v) != 2 {
+	}
+}
+
 func notUsed_Body_NotOK() {
 	v := getValue() // want "variable '.+' is only used in the if-statement"
 	if true {
