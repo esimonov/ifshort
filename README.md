@@ -1,3 +1,7 @@
+# Status: Archived
+This repository has been archived and is no longer maintained.
+---
+
 # ifshort
 [![Go Report Card](https://goreportcard.com/badge/github.com/esimonov/ifshort)](https://goreportcard.com/report/github.com/esimonov/ifshort)
 <a href='https://github.com/jpoles1/gopherbadger' target='_blank'>![gopherbadger-tag-do-not-edit](https://img.shields.io/badge/Go%20Coverage-97%25-brightgreen.svg?longCache=true&style=flat)</a>
